@@ -1,24 +1,35 @@
 import {
   AppBar,
   Box,
+  Button,
   Container,
+  Stack,
   Toolbar,
   Typography,
 } from '@mui/material'
-import type { PropsWithChildren } from 'react'
+import { Link, Outlet } from 'react-router-dom'
 
-export function AppShell({ children }: PropsWithChildren) {
+const navigation = [{ label: 'Home', path: '/' }] as const
+
+export function AppShell() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
-        <Toolbar>
-          <Typography component="div" variant="h6">
+        <Toolbar sx={{ gap: 3 }}>
+          <Typography component={Link} to="/" variant="h6" color="inherit" sx={{ textDecoration: 'none' }}>
             HMS
           </Typography>
+          <Stack component="nav" direction="row" spacing={1} aria-label="Main navigation">
+            {navigation.map((item) => (
+              <Button color="inherit" component={Link} key={item.path} to={item.path}>
+                {item.label}
+              </Button>
+            ))}
+          </Stack>
         </Toolbar>
       </AppBar>
       <Container component="main" maxWidth="lg" sx={{ py: 5 }}>
-        {children}
+        <Outlet />
       </Container>
     </Box>
   )

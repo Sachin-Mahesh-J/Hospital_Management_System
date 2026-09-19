@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express'
 import type { ZodType } from 'zod'
-import { AppError } from '../errors/AppError.js'
+import { ValidationError } from '../errors/httpErrors.js'
 
 type RequestSchemas = {
   body?: ZodType
@@ -25,10 +25,12 @@ export function validate(schemas: RequestSchemas): RequestHandler {
 
       if (!result.success) {
         next(
-          new AppError(
-            400,
-            'VALIDATION_ERROR',
+          new ValidationError(
             `Invalid request ${location}.`,
+            result.error.issues.map((issue) => ({
+              path: [location, ...issue.path].join('.'),
+              message: issue.message,
+            })),
           ),
         )
         return

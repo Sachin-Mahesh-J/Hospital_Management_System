@@ -11,7 +11,7 @@
     "build": "npm run build -w backend && npm run build -w frontend",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
     "lint": "npm run lint -w backend && npm run lint -w frontend",
-    "test": "npm run test -w backend",
+    "test": "npm run test -w backend && npm run test -w frontend",
     "test:database": "npm run test:database -w backend",
     "prisma:generate": "npm run prisma:generate -w backend",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w backend"

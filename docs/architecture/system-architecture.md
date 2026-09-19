@@ -1,7 +1,20 @@
 # System Architecture
 
-Status: Approved design; Milestone 1 application foundation implemented, business
-modules remain planned
+Status: Approved design; Milestone 4 core application infrastructure implemented,
+authentication and business modules remain planned
+
+## Implemented core infrastructure
+
+- Zod-validated, environment-specific backend configuration with narrow CORS and
+  structured, redacted logging.
+- Central Prisma client lifecycle, testable Express creation, database-aware startup,
+  and graceful HTTP/database shutdown.
+- Versioned REST routing, request IDs, safe centralized errors, validation field
+  details, bounded pagination/sorting utilities, and implemented-contract OpenAPI.
+- Authentication-ready current-user and access-control extension points. Token
+  verification, sessions, login, and authorization rules are not implemented.
+- Frontend routing, application shell, reusable page/loading/error/empty states,
+  notifications, and a typed central API client.
 
 ## Architectural goals
 
@@ -83,7 +96,9 @@ infrastructure:
 Key rules:
 
 - `VITE_API_URL` provides the API location.
-- Server data uses a focused query/cache layer selected during project initialization.
+- Server data uses the central API client. Selection of a focused query/cache layer is
+  deferred until the first business-data module, when its query lifecycle requirements
+  can be evaluated without adding an unnecessary dependency.
 - The access token remains in memory.
 - Route guards and permission-aware controls improve usability but do not authorize
   operations.
