@@ -29,7 +29,49 @@ const permissions = [
     PERMISSIONS.identityPasswordChange,
     'Change own password after current-password verification.',
   ],
+  [PERMISSIONS.patientRead, 'Read and search patient demographic records.'],
+  [PERMISSIONS.patientCreate, 'Register patient demographic records.'],
+  [PERMISSIONS.patientUpdate, 'Update patient demographics and status.'],
 ] as const
+
+const rolePermissionCodes: Record<(typeof roles)[number][0], readonly string[]> = {
+  administrator: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.patientRead,
+    PERMISSIONS.patientCreate,
+    PERMISSIONS.patientUpdate,
+  ],
+  receptionist: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.patientRead,
+    PERMISSIONS.patientCreate,
+    PERMISSIONS.patientUpdate,
+  ],
+  doctor: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.patientRead,
+  ],
+  nurse: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.patientRead,
+  ],
+  laboratory_staff: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+  ],
+  pharmacist: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+  ],
+  accountant: [
+    PERMISSIONS.identitySelfRead,
+    PERMISSIONS.identityPasswordChange,
+  ],
+}
 
 async function bootstrap(): Promise<'created' | 'already_exists'> {
   const input = bootstrapSchema.parse(process.env)
@@ -40,7 +82,9 @@ async function bootstrap(): Promise<'created' | 'already_exists'> {
   return database.client.$transaction(
     async (transaction) => {
       await transaction.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtext('hms_admin_bootstrap'))
+        SELECT pg_advisory_xact_lock(
+          hashtext('hms_admin_bootstrap')
+        )::text AS lock_result
       `
 
       const roleRows = new Map<string, string>()
@@ -65,18 +109,22 @@ async function bootstrap(): Promise<'created' | 'already_exists'> {
         roleRows.set(code, role.id)
       }
 
-      const permissionIds: string[] = []
+      const permissionIds = new Map<string, string>()
       for (const [code, description] of permissions) {
         const permission = await transaction.permission.upsert({
           where: { code },
           create: { code, description },
           update: { description, updatedAt: new Date() },
         })
-        permissionIds.push(permission.id)
+        permissionIds.set(code, permission.id)
       }
 
-      for (const roleId of roleRows.values()) {
-        for (const permissionId of permissionIds) {
+      for (const [roleCode, roleId] of roleRows) {
+        const approvedCodes = rolePermissionCodes[
+          roleCode as keyof typeof rolePermissionCodes
+        ]
+        for (const permissionCode of approvedCodes) {
+          const permissionId = permissionIds.get(permissionCode)!
           await transaction.rolePermission.upsert({
             where: {
               roleId_permissionId: { roleId, permissionId },
@@ -85,6 +133,18 @@ async function bootstrap(): Promise<'created' | 'already_exists'> {
             update: {},
           })
         }
+        await transaction.rolePermission.deleteMany({
+          where: {
+            roleId,
+            permission: {
+              code: {
+                in: permissions
+                  .map(([code]) => code)
+                  .filter((code) => !approvedCodes.includes(code)),
+              },
+            },
+          },
+        })
       }
 
       const administratorRoleId = roleRows.get('administrator')!

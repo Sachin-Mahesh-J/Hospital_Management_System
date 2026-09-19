@@ -17,8 +17,8 @@ import { appRoutes } from './routes'
 const authenticatedUser = {
   id: 'user-1',
   username: 'clinician',
-  roles: ['CLINICIAN'],
-  permissions: ['patient:read'],
+  roles: ['doctor'],
+  permissions: ['patient.read'],
 }
 
 const authValue: AuthContextValue = {
@@ -43,6 +43,35 @@ describe('application routing', () => {
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
+  })
+
+  it('blocks patient routes when the required permission is absent', async () => {
+    const router = createMemoryRouter(appRoutes, {
+      initialEntries: ['/patients'],
+    })
+    render(
+      <AuthContext value={{
+        ...authValue,
+        user: { ...authenticatedUser, permissions: [] },
+      }}>
+        <RouterProvider router={router} />
+      </AuthContext>,
+    )
+    expect(
+      await screen.findByText('You are not authorized to access this page.'),
+    ).toBeVisible()
+  })
+
+  it('redirects unauthenticated patient routes to login', async () => {
+    const router = createMemoryRouter(appRoutes, {
+      initialEntries: ['/patients'],
+    })
+    render(
+      <AuthContext value={{ ...authValue, user: null }}>
+        <RouterProvider router={router} />
+      </AuthContext>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Sign in to HMS' })).toBeVisible()
   })
 })
 

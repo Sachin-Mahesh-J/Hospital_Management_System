@@ -7,6 +7,7 @@ export default defineConfig({
       process.env.HMS_DATABASE_TESTS === 'true'
         ? configDefaults.exclude
         : [...configDefaults.exclude, 'test/database/**'],
+    fileParallelism: process.env.HMS_DATABASE_TESTS !== 'true',
     setupFiles: ['./test/setup.ts'],
     restoreMocks: true,
   },

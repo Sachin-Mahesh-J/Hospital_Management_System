@@ -17,6 +17,7 @@ import {
   setAccessToken,
   setAuthExpirationHandler,
 } from '../api/client'
+import { queryClient } from '../app/queryClient'
 import { AuthContext, type AuthContextValue } from './authContext'
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     setAuthExpirationHandler(() => {
       setUser(null)
+      queryClient.clear()
     })
 
     let active = true
@@ -65,6 +67,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await logoutRequest()
     } finally {
       setUser(null)
+      queryClient.clear()
     }
   }, [])
 
@@ -73,6 +76,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await changePasswordRequest(currentPassword, newPassword)
       setAccessToken(null)
       setUser(null)
+      queryClient.clear()
     },
     [],
   )

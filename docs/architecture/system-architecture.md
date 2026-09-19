@@ -1,7 +1,7 @@
 # System Architecture
 
-Status: Approved design; Milestone 5 authentication and authorization implemented,
-business modules remain planned
+Status: Approved design; authentication, authorization, and Patient Management
+implemented; other business modules remain planned
 
 ## Implemented core infrastructure
 
@@ -16,6 +16,9 @@ business modules remain planned
 - Frontend routing, application shell, reusable page/loading/error/empty states,
   notifications, an in-memory authenticated-user provider, protected routes, and a
   credentialed API client with single-flight refresh recovery.
+- Layered Patient REST module with strict validation, repository-based Prisma access,
+  explicit patient permissions, mutation audits, and non-destructive status handling.
+- TanStack Query patient list/detail caching and create/update invalidation.
 
 ## Architectural goals
 
@@ -89,7 +92,7 @@ The React application is organized by the same user-facing features plus shared
 infrastructure:
 
 - `app`: routing, providers, theme, and application shell.
-- `features`: auth, patients, appointments, admissions, medical records, laboratory,
+- `features`: patients, appointments, admissions, medical records, laboratory,
   pharmacy, billing, staff, reports, and dashboard.
 - `shared`: reusable controls, tables, forms, dialogs, notifications, and state views.
 - `api`: central REST client, API types, error mapping, and authentication refresh.
@@ -97,9 +100,9 @@ infrastructure:
 Key rules:
 
 - `VITE_API_URL` provides the API location.
-- Server data uses the central API client. Selection of a focused query/cache layer is
-  deferred until the first business-data module, when its query lifecycle requirements
-  can be evaluated without adding an unnecessary dependency.
+- Server data uses the central API client and TanStack Query. One application
+  `QueryClient` owns patient list/detail caching; mutations invalidate the narrow
+  patient key families and authentication teardown clears user-scoped server state.
 - The access token remains in memory.
 - Route guards and permission-aware controls improve usability but do not authorize
   operations.

@@ -33,6 +33,27 @@ describe('API client', () => {
     )
   })
 
+  it('sends JSON PATCH bodies through the shared client', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ data: { phone: '555-0199' } }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      }),
+    )
+
+    await expect(
+      apiClient.patch<{ phone: string }>('/patients/1', { phone: '555-0199' }),
+    ).resolves.toEqual({ phone: '555-0199' })
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:5000/api/v1/patients/1',
+      expect.objectContaining({
+        credentials: 'include',
+        method: 'PATCH',
+        body: JSON.stringify({ phone: '555-0199' }),
+      }),
+    )
+  })
+
   it('adds the CSRF marker to authentication POST requests', async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ data: { accessToken: 'token' } }), {

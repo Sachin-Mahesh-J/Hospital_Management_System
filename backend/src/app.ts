@@ -15,6 +15,7 @@ import {
 import { requestContext } from './middleware/requestContext.js'
 import { authRouter } from './modules/auth/auth.routes.js'
 import { healthRouter } from './modules/health/health.routes.js'
+import { patientRouter } from './modules/patients/patient.routes.js'
 
 export function createApp() {
   const app = express()
@@ -57,6 +58,7 @@ export function createApp() {
 
   app.use('/api/v1/health', healthRouter)
   app.use('/api/v1/auth', authRouter)
+  app.use('/api/v1/patients', patientRouter)
   app.get('/api/v1/openapi.json', (_request, response) => {
     response.json(openApiDocument)
   })

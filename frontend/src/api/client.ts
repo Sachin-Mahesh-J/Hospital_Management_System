@@ -5,6 +5,7 @@ type ErrorResponse = {
     code?: string
     message?: string
     requestId?: string
+    fields?: Array<{ path: string; message: string }>
   }
 }
 
@@ -32,18 +33,21 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string | undefined
   readonly requestId: string | undefined
+  readonly fields: ReadonlyArray<{ path: string; message: string }>
 
   constructor(
     message: string,
     status: number,
     code?: string,
     requestId?: string,
+    fields: ReadonlyArray<{ path: string; message: string }> = [],
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.fields = fields
   }
 }
 
@@ -73,7 +77,7 @@ function createHeaders(path: string, init: RequestInit): Headers {
 async function execute<T>(
   path: string,
   init: RequestInit,
-): Promise<{ response: Response; data?: T }> {
+): Promise<{ response: Response; body?: ApiResponse<T> & Record<string, unknown> }> {
   const headers = createHeaders(path, init)
 
   const response = await fetch(`${env.apiUrl}${path}`, {
@@ -90,8 +94,8 @@ async function execute<T>(
     return { response }
   }
 
-  const body = (await response.json()) as ApiResponse<T>
-  return { response, data: body.data }
+  const body = (await response.json()) as ApiResponse<T> & Record<string, unknown>
+  return { response, body }
 }
 
 async function throwResponseError(response: Response): Promise<never> {
@@ -101,6 +105,7 @@ async function throwResponseError(response: Response): Promise<never> {
     response.status,
     body.error?.code,
     body.error?.requestId,
+    body.error?.fields,
   )
 }
 
@@ -132,9 +137,11 @@ async function request<T>(
   path: string,
   init: RequestInit = {},
   options: RequestOptions = {},
+  select: (body: ApiResponse<unknown> & Record<string, unknown>) => T =
+    (body) => body.data as T,
 ): Promise<T> {
   try {
-    const { response, data } = await execute<T>(path, init)
+    const { response, body } = await execute<unknown>(path, init)
 
     if (!response.ok) {
       const canRefresh = options.canRefresh
@@ -151,16 +158,18 @@ async function request<T>(
           return throwResponseError(response)
         }
 
-        return request<T>(path, init, {
-          canRefresh: false,
-          hasRetried: true,
-        })
+        return request<T>(
+          path,
+          init,
+          { canRefresh: false, hasRetried: true },
+          select,
+        )
       }
 
       return throwResponseError(response)
     }
 
-    return data as T
+    return select(body!)
   } catch (error: unknown) {
     if (error instanceof ApiError) {
       throw error
@@ -196,5 +205,23 @@ export const apiClient = {
       method: 'POST',
       body: body === undefined ? undefined : JSON.stringify(body),
     })
+  },
+  patch<T>(path: string, body: unknown, init?: RequestInit): Promise<T> {
+    return request<T>(path, {
+      ...init,
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  },
+  getEnvelope<T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<ApiResponse<T> & Record<string, unknown>> {
+    return request(
+      path,
+      { ...init, method: 'GET' },
+      {},
+      (body) => body as ApiResponse<T> & Record<string, unknown>,
+    )
   },
 } as const

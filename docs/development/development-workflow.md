@@ -49,6 +49,11 @@ Cursor must not commit or push unless explicitly instructed.
 Logical design precedes scaffolding, but the physical Prisma migration follows Prisma
 project initialization.
 
+Product Milestone 6 delivered Patient Management registration, search, details,
+demographic/status updates, patient permissions, and TanStack Query. Medical history
+and patient document storage remain deferred; they still belong with later workflow
+milestones rather than this delivery.
+
 ## Testing strategy
 
 ### Unit tests

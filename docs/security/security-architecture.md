@@ -44,6 +44,9 @@ engineering policy for this milestone, not a claim from the source PDF.
 
 - Backend middleware establishes authenticated identity.
 - Application policies check explicit permissions for each operation.
+- Patient Management currently authorizes `patient.read`, `patient.create`, and
+  `patient.update` on the backend. Resource-level “relevant patient” scoping remains
+  future work because assignment and care-team context do not exist yet.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

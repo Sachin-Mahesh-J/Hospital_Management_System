@@ -371,7 +371,9 @@ Purpose: Patient registration and search identity.
 - Application validation rejects known birth dates in the future; a clock-dependent
   rule is not encoded as a PostgreSQL check. Month precision is stored as the first day
   of that month and year precision as January 1; the precision column preserves meaning.
-- `PENDING DECISION`: patient-number format and duplicate-matching policy.
+- Patient Management currently stores an interim unique `P-<UUID>` value in
+  `patient_number`. A hospital-facing numbering scheme and duplicate-matching policy
+  remain pending decisions.
 
 #### `patient_documents`
 

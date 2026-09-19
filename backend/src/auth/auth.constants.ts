@@ -11,4 +11,7 @@ export const REFRESH_COOKIE_PATH = '/api/v1/auth'
 export const PERMISSIONS = {
   identitySelfRead: 'identity.self.read',
   identityPasswordChange: 'identity.password.change',
+  patientRead: 'patient.read',
+  patientCreate: 'patient.create',
+  patientUpdate: 'patient.update',
 } as const

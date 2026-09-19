@@ -3,6 +3,11 @@ import {
   type RouteObject,
 } from 'react-router-dom'
 import { ProtectedRoute } from '../auth/ProtectedRoute'
+import { PermissionRoute } from '../auth/PermissionRoute'
+import { PatientDetailPage } from '../features/patients/PatientDetailPage'
+import { PatientEditPage } from '../features/patients/PatientEditPage'
+import { PatientListPage } from '../features/patients/PatientListPage'
+import { PatientRegisterPage } from '../features/patients/PatientRegisterPage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
@@ -25,6 +30,30 @@ export const appRoutes: RouteObject[] = [
               {
                 path: 'change-password',
                 element: <ChangePasswordPage />,
+              },
+              {
+                path: 'patients',
+                children: [
+                  {
+                    element: <PermissionRoute permission="patient.read" />,
+                    children: [
+                      { index: true, element: <PatientListPage /> },
+                      { path: ':patientId', element: <PatientDetailPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="patient.create" />,
+                    children: [
+                      { path: 'new', element: <PatientRegisterPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="patient.update" />,
+                    children: [
+                      { path: ':patientId/edit', element: <PatientEditPage /> },
+                    ],
+                  },
+                ],
               },
               { path: '*', element: <NotFoundPage /> },
             ],

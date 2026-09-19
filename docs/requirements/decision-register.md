@@ -39,6 +39,10 @@ Use UUID primary keys. Externally meaningful patient, employee, invoice, and sim
 numbers are separate unique business identifiers. Their final display formats are
 configuration/business policy, not primary keys.
 
+Patient Management currently allocates an interim unique `P-<UUID>` patient number.
+That value satisfies the unique `patient_number` constraint and concurrent
+registration safety. A hospital-facing display format remains an open business policy.
+
 ### D-007 — Time and timezone
 
 Persist timestamps in UTC. Require an IANA hospital timezone configuration for schedule,
@@ -134,7 +138,9 @@ modified. This decision introduces no automatic invoice or payment reversal beha
 
 These require a decision before implementing their affected module:
 
-- Patient-number format, duplicate detection, emergency-contact validation, and consent.
+- Final patient-number display format, duplicate detection, emergency-contact
+  validation, and consent. Patient Management currently uses interim `P-<UUID>`
+  numbers and does not implement fuzzy duplicate matching.
 - Doctor appointment duration, availability recurrence, breaks, schedule-entry overlap,
   and cancellation policy. Active doctor/patient booking conflicts and status values are
   resolved by D-013 and D-017.

@@ -15,6 +15,11 @@ import { useAuth } from '../auth/authContext'
 const navigation = [
   { label: 'Home', path: '/', permission: null },
   {
+    label: 'Patients',
+    path: '/patients',
+    permission: 'patient.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

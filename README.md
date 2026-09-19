@@ -5,10 +5,10 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 5 implements authentication and authorization on the approved physical
-schema: Argon2id passwords, short-lived access JWTs, rotating refresh sessions,
-permission-based access control, audit events, and an in-memory frontend session.
-Business modules and cloud deployment remain outside this milestone.
+Milestone 6 adds Patient Management to the Milestone 5 authentication foundation:
+registration, demographic and status updates, search, paginated listing, details,
+patient-specific RBAC and audit events, plus TanStack Query server-state management.
+Medical history and patient document storage remain deferred.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -162,18 +162,20 @@ backend/
 frontend/
   src/api/            Central REST client and error mapping
   src/app/            Theme and reusable application shell
-  src/features/auth/  In-memory authentication and permission-aware UI
+  src/auth/           In-memory authentication and permission-aware UI
+  src/features/       Business UI, API hooks, and server-state queries
   src/config/         Browser environment configuration
 docs/                 Requirements, architecture, security, data, and workflow docs
 ```
 
 The frontend communicates only with the REST API. Controllers delegate to application
-services, and future repositories will be the only business-module layer that accesses
-Prisma.
+services, and focused business-module repositories are the only module layer that
+accesses Prisma. Patient API, permissions, query keys, and deferred scope are documented
+in `docs/development/patient-management.md`.
 
 ## Approved stack
 
-- Frontend: React, TypeScript, Material UI, Vite
+- Frontend: React, TypeScript, Material UI, Vite, TanStack Query
 - Backend: Node.js, Express, TypeScript
 - API: versioned REST with Zod validation and OpenAPI/Swagger
 - Data: PostgreSQL through Prisma
