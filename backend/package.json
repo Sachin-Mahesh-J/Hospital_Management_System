@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit --pretty false",
     "lint": "oxlint src test prisma.config.ts",
     "test": "vitest run",
+    "test:database": "tsx test/database/run-database-tests.ts",
     "prisma:generate": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:validate": "prisma validate"
   },
   "dependencies": {

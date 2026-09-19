@@ -7,5 +7,716 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// No models are defined in Milestone 1. The physical-schema approval gate in
-// docs/database/logical-data-model.md must pass before models or migrations are added.
+model User {
+  id                    String             @id(map: "pk_users") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username              String             @db.VarChar(100)
+  passwordHash          String             @map("password_hash") @db.VarChar(255)
+  status                String             @default("pending") @db.VarChar(20)
+  passwordChangedAt     DateTime           @default(now()) @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt           DateTime?          @map("last_login_at") @db.Timestamptz(6)
+  failedLoginCount      Int                @default(0) @map("failed_login_count")
+  lockedUntil           DateTime?          @map("locked_until") @db.Timestamptz(6)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  roles                 UserRole[]         @relation("UserRoleUser")
+  roleAssignments       UserRole[]         @relation("UserRoleAssigner")
+  refreshSessions       RefreshSession[]   @relation("SessionUser")
+  auditLogs             AuditLog[]
+  employee              Employee?
+  attendanceEntries     AttendanceRecord[]
+  leaveDecisions        LeaveRecord[]
+  uploadedDocuments     PatientDocument[]
+  cancelledAppointments Appointment[]      @relation("AppointmentCanceller")
+  createdAppointments   Appointment[]      @relation("AppointmentCreator")
+  createdAdmissions     Admission[]
+  dispenseReversals     DispenseReversal[]
+  stockMovements        StockMovement[]
+  createdInvoices       Invoice[]
+  receivedPayments      Payment[]
+
+  @@index([status], map: "idx_users_status")
+  @@map("users")
+}
+
+model Role {
+  id          String           @id(map: "pk_roles") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String           @unique(map: "uq_roles_code") @db.VarChar(50)
+  name        String           @unique(map: "uq_roles_name") @db.VarChar(100)
+  description String?
+  status      String           @default("active") @db.VarChar(20)
+  isSystem    Boolean          @default(false) @map("is_system")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id(map: "pk_permissions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String           @unique(map: "uq_permissions_code") @db.VarChar(100)
+  description String           @db.VarChar(500)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id               String   @id(map: "pk_user_roles") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  roleId           String   @map("role_id") @db.Uuid
+  assignedByUserId String?  @map("assigned_by_user_id") @db.Uuid
+  assignedAt       DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  user             User     @relation("UserRoleUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_user_roles_user_id")
+  role             Role     @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_user_roles_role_id")
+  assignedBy       User?    @relation("UserRoleAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_user_roles_assigned_by_user_id")
+
+  @@unique([userId, roleId], map: "uq_user_roles_user_id_role_id")
+  @@index([roleId], map: "idx_user_roles_role_id")
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String     @id(map: "pk_role_permissions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_role_permissions_role_id")
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_role_permissions_permission_id")
+
+  @@unique([roleId, permissionId], map: "uq_role_permissions_role_id_permission_id")
+  @@index([permissionId], map: "idx_role_permissions_permission_id")
+  @@map("role_permissions")
+}
+
+model RefreshSession {
+  id                  String          @id(map: "pk_refresh_sessions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String          @map("user_id") @db.Uuid
+  tokenHash           String          @unique(map: "uq_refresh_sessions_token_hash") @map("token_hash") @db.VarChar(255)
+  expiresAt           DateTime        @map("expires_at") @db.Timestamptz(6)
+  idleExpiresAt       DateTime        @map("idle_expires_at") @db.Timestamptz(6)
+  lastUsedAt          DateTime?       @map("last_used_at") @db.Timestamptz(6)
+  revokedAt           DateTime?       @map("revoked_at") @db.Timestamptz(6)
+  revokeReason        String?         @map("revoke_reason") @db.VarChar(100)
+  replacedBySessionId String?         @unique(map: "uq_refresh_sessions_replaced_by_session_id") @map("replaced_by_session_id") @db.Uuid
+  userAgentHash       String?         @map("user_agent_hash") @db.VarChar(128)
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                User            @relation("SessionUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_refresh_sessions_user_id")
+  replacedBy          RefreshSession? @relation("SessionRotation", fields: [replacedBySessionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_refresh_sessions_replaced_by_session_id")
+  replaces            RefreshSession? @relation("SessionRotation")
+
+  @@map("refresh_sessions")
+}
+
+model AuditLog {
+  id           String   @id(map: "pk_audit_logs") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurredAt   DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorUserId  String?  @map("actor_user_id") @db.Uuid
+  action       String   @db.VarChar(100)
+  resourceType String   @map("resource_type") @db.VarChar(100)
+  resourceId   String?  @map("resource_id") @db.Uuid
+  outcome      String   @db.VarChar(20)
+  requestId    String?  @map("request_id") @db.Uuid
+  metadata     Json     @default("{}") @db.JsonB
+  sourceIp     String?  @map("source_ip") @db.Inet
+  actor        User?    @relation(fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_audit_logs_actor_user_id")
+
+  @@index([actorUserId, occurredAt(sort: Desc)], map: "idx_audit_logs_actor_user_id_occurred_at")
+  @@index([resourceType, resourceId, occurredAt(sort: Desc)], map: "idx_audit_logs_resource_type_resource_id_occurred_at")
+  @@index([requestId], map: "idx_audit_logs_request_id")
+  @@map("audit_logs")
+}
+
+model Department {
+  id          String     @id(map: "pk_departments") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String     @unique(map: "uq_departments_code") @db.VarChar(30)
+  name        String     @unique(map: "uq_departments_name") @db.VarChar(150)
+  description String?
+  status      String     @default("active") @db.VarChar(20)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  employees   Employee[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id                     String             @id(map: "pk_employees") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeNumber         String             @unique(map: "uq_employees_employee_number") @map("employee_number") @db.VarChar(50)
+  userId                 String?            @unique(map: "uq_employees_user_id") @map("user_id") @db.Uuid
+  departmentId           String             @map("department_id") @db.Uuid
+  firstName              String             @map("first_name") @db.VarChar(100)
+  lastName               String             @map("last_name") @db.VarChar(100)
+  phone                  String?            @db.VarChar(30)
+  email                  String?            @db.VarChar(254)
+  jobTitle               String             @map("job_title") @db.VarChar(100)
+  employmentStatus       String             @default("active") @map("employment_status") @db.VarChar(20)
+  hireDate               DateTime           @map("hire_date") @db.Date
+  endDate                DateTime?          @map("end_date") @db.Date
+  createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user                   User?              @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_employees_user_id")
+  department             Department         @relation(fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_employees_department_id")
+  doctorProfile          DoctorProfile?
+  attendanceRecords      AttendanceRecord[]
+  leaveRecords           LeaveRecord[]
+  authoredMedicalRecords MedicalRecord[]
+  collectedLabItems      LabRequestItem[]
+  enteredLabResults      LabResult[]        @relation("LabResultEntrant")
+  finalizedLabResults    LabResult[]        @relation("LabResultFinalizer")
+  dispenseRecords        DispenseRecord[]
+
+  @@index([departmentId, employmentStatus], map: "idx_employees_department_id_employment_status")
+  @@map("employees")
+}
+
+model DoctorProfile {
+  id                  String           @id(map: "pk_doctor_profiles") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId          String           @unique(map: "uq_doctor_profiles_employee_id") @map("employee_id") @db.Uuid
+  licenseNumber       String           @unique(map: "uq_doctor_profiles_license_number") @map("license_number") @db.VarChar(100)
+  specialization      String           @db.VarChar(150)
+  professionalSummary String?          @map("professional_summary")
+  contactExtension    String?          @map("contact_extension") @db.VarChar(20)
+  status              String           @default("active") @db.VarChar(20)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  employee            Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_doctor_profiles_employee_id")
+  schedules           DoctorSchedule[]
+  appointments        Appointment[]
+  admissions          Admission[]
+  prescriptions       Prescription[]
+  labRequests         LabRequest[]
+
+  @@map("doctor_profiles")
+}
+
+model DoctorSchedule {
+  id        String        @id(map: "pk_doctor_schedules") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  doctorId  String        @map("doctor_id") @db.Uuid
+  startsAt  DateTime      @map("starts_at") @db.Timestamptz(6)
+  endsAt    DateTime      @map("ends_at") @db.Timestamptz(6)
+  status    String        @default("available") @db.VarChar(20)
+  note      String?       @db.VarChar(500)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_doctor_schedules_doctor_id")
+
+  @@index([doctorId, startsAt, endsAt], map: "idx_doctor_schedules_doctor_id_starts_at_ends_at")
+  @@map("doctor_schedules")
+}
+
+model AttendanceRecord {
+  id               String    @id(map: "pk_attendance_records") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId       String    @map("employee_id") @db.Uuid
+  workDate         DateTime  @map("work_date") @db.Date
+  checkInAt        DateTime? @map("check_in_at") @db.Timestamptz(6)
+  checkOutAt       DateTime? @map("check_out_at") @db.Timestamptz(6)
+  status           String    @db.VarChar(20)
+  note             String?   @db.VarChar(500)
+  recordedByUserId String?   @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_attendance_records_employee_id")
+  recordedBy       User?     @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_attendance_records_recorded_by_user_id")
+
+  @@unique([employeeId, workDate], map: "uq_attendance_records_employee_id_work_date")
+  @@index([status, workDate], map: "idx_attendance_records_status_work_date")
+  @@map("attendance_records")
+}
+
+model LeaveRecord {
+  id              String    @id(map: "pk_leave_records") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId      String    @map("employee_id") @db.Uuid
+  startsOn        DateTime  @map("starts_on") @db.Date
+  endsOn          DateTime  @map("ends_on") @db.Date
+  leaveType       String    @map("leave_type") @db.VarChar(50)
+  reason          String
+  status          String    @default("requested") @db.VarChar(20)
+  decidedByUserId String?   @map("decided_by_user_id") @db.Uuid
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz(6)
+  decisionNote    String?   @map("decision_note") @db.VarChar(500)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_leave_records_employee_id")
+  decidedBy       User?     @relation(fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_leave_records_decided_by_user_id")
+
+  @@index([employeeId, startsOn, endsOn], map: "idx_leave_records_employee_id_starts_on_ends_on")
+  @@index([status, startsOn], map: "idx_leave_records_status_starts_on")
+  @@map("leave_records")
+}
+
+model Patient {
+  id                    String            @id(map: "pk_patients") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientNumber         String            @unique(map: "uq_patients_patient_number") @map("patient_number") @db.VarChar(50)
+  firstName             String            @map("first_name") @db.VarChar(100)
+  lastName              String            @map("last_name") @db.VarChar(100)
+  dateOfBirth           DateTime?         @map("date_of_birth") @db.Date
+  dateOfBirthPrecision  String            @map("date_of_birth_precision") @db.VarChar(10)
+  sexAtRegistration     String?           @map("sex_at_registration") @db.VarChar(20)
+  phone                 String?           @db.VarChar(30)
+  email                 String?           @db.VarChar(254)
+  addressText           String?           @map("address_text")
+  emergencyContactName  String?           @map("emergency_contact_name") @db.VarChar(200)
+  emergencyContactPhone String?           @map("emergency_contact_phone") @db.VarChar(30)
+  status                String            @default("active") @db.VarChar(20)
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  documents             PatientDocument[]
+  appointments          Appointment[]
+  admissions            Admission[]
+  medicalRecords        MedicalRecord[]
+  prescriptions         Prescription[]
+  labRequests           LabRequest[]
+  invoices              Invoice[]
+
+  @@map("patients")
+}
+
+model PatientDocument {
+  id                String    @id(map: "pk_patient_documents") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId         String    @map("patient_id") @db.Uuid
+  uploadedByUserId  String    @map("uploaded_by_user_id") @db.Uuid
+  objectKey         String    @unique(map: "uq_patient_documents_object_key") @map("object_key") @db.VarChar(500)
+  originalName      String    @map("original_name") @db.VarChar(255)
+  detectedMediaType String    @map("detected_media_type") @db.VarChar(100)
+  sizeBytes         BigInt    @map("size_bytes")
+  checksum          String    @db.VarChar(128)
+  category          String    @db.VarChar(50)
+  status            String    @default("pending") @db.VarChar(20)
+  description       String?   @db.VarChar(500)
+  uploadedAt        DateTime? @map("uploaded_at") @db.Timestamptz(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient           Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_patient_documents_patient_id")
+  uploadedBy        User      @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_patient_documents_uploaded_by_user_id")
+
+  @@index([patientId, createdAt(sort: Desc)], map: "idx_patient_documents_patient_id_created_at")
+  @@index([status, createdAt], map: "idx_patient_documents_status_created_at")
+  @@map("patient_documents")
+}
+
+model Appointment {
+  id                           String          @id(map: "pk_appointments") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId                    String          @map("patient_id") @db.Uuid
+  doctorId                     String          @map("doctor_id") @db.Uuid
+  startsAt                     DateTime        @map("starts_at") @db.Timestamptz(6)
+  endsAt                       DateTime        @map("ends_at") @db.Timestamptz(6)
+  status                       String          @default("scheduled") @db.VarChar(20)
+  reason                       String?         @db.VarChar(1000)
+  cancellationReason           String?         @map("cancellation_reason") @db.VarChar(500)
+  cancelledAt                  DateTime?       @map("cancelled_at") @db.Timestamptz(6)
+  cancelledByUserId            String?         @map("cancelled_by_user_id") @db.Uuid
+  rescheduledFromAppointmentId String?         @unique(map: "uq_appointments_rescheduled_from_appointment_id") @map("rescheduled_from_appointment_id") @db.Uuid
+  createdByUserId              String          @map("created_by_user_id") @db.Uuid
+  createdAt                    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient                      Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_appointments_patient_id")
+  doctor                       DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_appointments_doctor_id")
+  cancelledBy                  User?           @relation("AppointmentCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_appointments_cancelled_by_user_id")
+  createdBy                    User            @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_appointments_created_by_user_id")
+  rescheduledFrom              Appointment?    @relation("AppointmentReschedule", fields: [rescheduledFromAppointmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_appointments_rescheduled_from_appointment_id")
+  rescheduledTo                Appointment?    @relation("AppointmentReschedule")
+  medicalRecords               MedicalRecord[]
+  invoiceItems                 InvoiceItem[]
+
+  @@index([doctorId, startsAt, status], map: "idx_appointments_doctor_id_starts_at_status")
+  @@index([patientId, startsAt(sort: Desc)], map: "idx_appointments_patient_id_starts_at")
+  @@index([status, startsAt], map: "idx_appointments_status_starts_at")
+  @@map("appointments")
+}
+
+model Admission {
+  id                String          @id(map: "pk_admissions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admissionNumber   String          @unique(map: "uq_admissions_admission_number") @map("admission_number") @db.VarChar(50)
+  patientId         String          @map("patient_id") @db.Uuid
+  attendingDoctorId String?         @map("attending_doctor_id") @db.Uuid
+  admittedAt        DateTime        @map("admitted_at") @db.Timestamptz(6)
+  dischargedAt      DateTime?       @map("discharged_at") @db.Timestamptz(6)
+  status            String          @default("admitted") @db.VarChar(20)
+  reason            String
+  dischargeSummary  String?         @map("discharge_summary")
+  createdByUserId   String          @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient           Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_admissions_patient_id")
+  attendingDoctor   DoctorProfile?  @relation(fields: [attendingDoctorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_admissions_attending_doctor_id")
+  createdBy         User            @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_admissions_created_by_user_id")
+  medicalRecords    MedicalRecord[]
+  invoiceItems      InvoiceItem[]
+
+  @@index([patientId, admittedAt(sort: Desc)], map: "idx_admissions_patient_id_admitted_at")
+  @@index([status, admittedAt], map: "idx_admissions_status_admitted_at")
+  @@map("admissions")
+}
+
+model MedicalRecord {
+  id                    String          @id(map: "pk_medical_records") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId             String          @map("patient_id") @db.Uuid
+  authorEmployeeId      String          @map("author_employee_id") @db.Uuid
+  appointmentId         String?         @map("appointment_id") @db.Uuid
+  admissionId           String?         @map("admission_id") @db.Uuid
+  occurredAt            DateTime        @map("occurred_at") @db.Timestamptz(6)
+  status                String          @default("draft") @db.VarChar(20)
+  finalizedAt           DateTime?       @map("finalized_at") @db.Timestamptz(6)
+  amendsMedicalRecordId String?         @unique(map: "uq_medical_records_amends_medical_record_id") @map("amends_medical_record_id") @db.Uuid
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient               Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_records_patient_id")
+  author                Employee        @relation(fields: [authorEmployeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_records_author_employee_id")
+  appointment           Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_records_appointment_id")
+  admission             Admission?      @relation(fields: [admissionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_records_admission_id")
+  amends                MedicalRecord?  @relation("MedicalRecordAmendment", fields: [amendsMedicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_records_amends_medical_record_id")
+  amendedBy             MedicalRecord?  @relation("MedicalRecordAmendment")
+  diagnoses             Diagnosis[]
+  treatments            Treatment[]
+  reports               MedicalReport[]
+  prescriptions         Prescription[]
+  labRequests           LabRequest[]
+
+  @@index([patientId, occurredAt(sort: Desc)], map: "idx_medical_records_patient_id_occurred_at")
+  @@index([authorEmployeeId, occurredAt(sort: Desc)], map: "idx_medical_records_author_employee_id_occurred_at")
+  @@map("medical_records")
+}
+
+model Diagnosis {
+  id              String        @id(map: "pk_diagnoses") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalRecordId String        @map("medical_record_id") @db.Uuid
+  diagnosisText   String        @map("diagnosis_text")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_diagnoses_medical_record_id")
+
+  @@index([medicalRecordId, createdAt], map: "idx_diagnoses_medical_record_id_created_at")
+  @@map("diagnoses")
+}
+
+model Treatment {
+  id              String        @id(map: "pk_treatments") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalRecordId String        @map("medical_record_id") @db.Uuid
+  treatmentText   String        @map("treatment_text")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_treatments_medical_record_id")
+
+  @@index([medicalRecordId, createdAt], map: "idx_treatments_medical_record_id_created_at")
+  @@map("treatments")
+}
+
+model MedicalReport {
+  id              String        @id(map: "pk_medical_reports") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalRecordId String        @map("medical_record_id") @db.Uuid
+  title           String        @db.VarChar(200)
+  reportText      String        @map("report_text")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medical_reports_medical_record_id")
+
+  @@index([medicalRecordId, createdAt], map: "idx_medical_reports_medical_record_id_created_at")
+  @@map("medical_reports")
+}
+
+model Prescription {
+  id                   String             @id(map: "pk_prescriptions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalRecordId      String             @map("medical_record_id") @db.Uuid
+  patientId            String             @map("patient_id") @db.Uuid
+  prescribedByDoctorId String             @map("prescribed_by_doctor_id") @db.Uuid
+  prescribedAt         DateTime           @default(now()) @map("prescribed_at") @db.Timestamptz(6)
+  status               String             @default("active") @db.VarChar(30)
+  notes                String?
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  medicalRecord        MedicalRecord      @relation(fields: [medicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_prescriptions_medical_record_id")
+  patient              Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_prescriptions_patient_id")
+  prescribedBy         DoctorProfile      @relation(fields: [prescribedByDoctorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_prescriptions_prescribed_by_doctor_id")
+  items                PrescriptionItem[]
+
+  @@index([patientId, prescribedAt(sort: Desc), status], map: "idx_prescriptions_patient_id_prescribed_at_status")
+  @@index([medicalRecordId], map: "idx_prescriptions_medical_record_id")
+  @@index([prescribedByDoctorId, prescribedAt(sort: Desc)], map: "idx_prescriptions_prescribed_by_doctor_id_prescribed_at")
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id                 String           @id(map: "pk_prescription_items") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prescriptionId     String           @map("prescription_id") @db.Uuid
+  medicineId         String           @map("medicine_id") @db.Uuid
+  dosage             String           @db.VarChar(100)
+  route              String?          @db.VarChar(50)
+  frequency          String           @db.VarChar(100)
+  duration           String           @db.VarChar(100)
+  instructions       String?
+  quantityPrescribed Decimal          @map("quantity_prescribed") @db.Decimal(14, 4)
+  unit               String           @db.VarChar(30)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  prescription       Prescription     @relation(fields: [prescriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_prescription_items_prescription_id")
+  medicine           Medicine         @relation(fields: [medicineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_prescription_items_medicine_id")
+  dispenseRecords    DispenseRecord[]
+
+  @@index([prescriptionId], map: "idx_prescription_items_prescription_id")
+  @@index([medicineId], map: "idx_prescription_items_medicine_id")
+  @@map("prescription_items")
+}
+
+model LabTestDefinition {
+  id                        String           @id(map: "pk_lab_test_definitions") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                      String           @unique(map: "uq_lab_test_definitions_code") @db.VarChar(50)
+  name                      String           @unique(map: "uq_lab_test_definitions_name") @db.VarChar(200)
+  specimenType              String?          @map("specimen_type") @db.VarChar(100)
+  defaultUnit               String?          @map("default_unit") @db.VarChar(50)
+  referenceRangeDescription String?          @map("reference_range_description")
+  price                     Decimal?         @db.Decimal(19, 4)
+  currency                  String?          @db.VarChar(3)
+  status                    String           @default("active") @db.VarChar(20)
+  createdAt                 DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  requestItems              LabRequestItem[]
+
+  @@map("lab_test_definitions")
+}
+
+model LabRequest {
+  id                  String           @id(map: "pk_lab_requests") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId           String           @map("patient_id") @db.Uuid
+  requestedByDoctorId String           @map("requested_by_doctor_id") @db.Uuid
+  medicalRecordId     String?          @map("medical_record_id") @db.Uuid
+  requestedAt         DateTime         @default(now()) @map("requested_at") @db.Timestamptz(6)
+  status              String           @default("requested") @db.VarChar(30)
+  clinicalNote        String?          @map("clinical_note")
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient             Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_requests_patient_id")
+  requestedBy         DoctorProfile    @relation(fields: [requestedByDoctorId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_requests_requested_by_doctor_id")
+  medicalRecord       MedicalRecord?   @relation(fields: [medicalRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_requests_medical_record_id")
+  items               LabRequestItem[]
+
+  @@index([patientId, requestedAt(sort: Desc)], map: "idx_lab_requests_patient_id_requested_at")
+  @@index([status, requestedAt], map: "idx_lab_requests_status_requested_at")
+  @@index([requestedByDoctorId, requestedAt(sort: Desc)], map: "idx_lab_requests_requested_by_doctor_id_requested_at")
+  @@map("lab_requests")
+}
+
+model LabRequestItem {
+  id                          String            @id(map: "pk_lab_request_items") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  labRequestId                String            @map("lab_request_id") @db.Uuid
+  testDefinitionId            String            @map("test_definition_id") @db.Uuid
+  status                      String            @default("requested") @db.VarChar(30)
+  sampleCollectedAt           DateTime?         @map("sample_collected_at") @db.Timestamptz(6)
+  sampleCollectedByEmployeeId String?           @map("sample_collected_by_employee_id") @db.Uuid
+  priceSnapshot               Decimal?          @map("price_snapshot") @db.Decimal(19, 4)
+  currency                    String?           @db.VarChar(3)
+  createdAt                   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  labRequest                  LabRequest        @relation(fields: [labRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_request_items_lab_request_id")
+  testDefinition              LabTestDefinition @relation(fields: [testDefinitionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_request_items_test_definition_id")
+  sampleCollectedBy           Employee?         @relation(fields: [sampleCollectedByEmployeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_request_items_sample_collected_by_employee_id")
+  results                     LabResult[]
+  invoiceItems                InvoiceItem[]
+
+  @@index([labRequestId], map: "idx_lab_request_items_lab_request_id")
+  @@index([status, sampleCollectedAt], map: "idx_lab_request_items_status_sample_collected_at")
+  @@index([testDefinitionId], map: "idx_lab_request_items_test_definition_id")
+  @@map("lab_request_items")
+}
+
+model LabResult {
+  id                     String         @id(map: "pk_lab_results") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  labRequestItemId       String         @map("lab_request_item_id") @db.Uuid
+  versionNumber          Int            @map("version_number")
+  resultValue            String         @map("result_value")
+  resultUnit             String?        @map("result_unit") @db.VarChar(50)
+  referenceRangeSnapshot String?        @map("reference_range_snapshot")
+  resultNote             String?        @map("result_note")
+  enteredByEmployeeId    String         @map("entered_by_employee_id") @db.Uuid
+  enteredAt              DateTime       @default(now()) @map("entered_at") @db.Timestamptz(6)
+  finalizedByEmployeeId  String?        @map("finalized_by_employee_id") @db.Uuid
+  finalizedAt            DateTime?      @map("finalized_at") @db.Timestamptz(6)
+  supersedesLabResultId  String?        @unique(map: "uq_lab_results_supersedes_lab_result_id") @map("supersedes_lab_result_id") @db.Uuid
+  labRequestItem         LabRequestItem @relation(fields: [labRequestItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_results_lab_request_item_id")
+  enteredBy              Employee       @relation("LabResultEntrant", fields: [enteredByEmployeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_results_entered_by_employee_id")
+  finalizedBy            Employee?      @relation("LabResultFinalizer", fields: [finalizedByEmployeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_results_finalized_by_employee_id")
+  supersedes             LabResult?     @relation("LabResultCorrection", fields: [supersedesLabResultId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_lab_results_supersedes_lab_result_id")
+  supersededBy           LabResult?     @relation("LabResultCorrection")
+
+  @@unique([labRequestItemId, versionNumber], map: "uq_lab_results_lab_request_item_id_version_number")
+  @@index([labRequestItemId, versionNumber(sort: Desc)], map: "idx_lab_results_lab_request_item_id_version_number")
+  @@map("lab_results")
+}
+
+model Medicine {
+  id                String             @id(map: "pk_medicines") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String             @unique(map: "uq_medicines_code") @db.VarChar(50)
+  genericName       String             @map("generic_name") @db.VarChar(200)
+  brandName         String?            @map("brand_name") @db.VarChar(200)
+  dosageForm        String             @map("dosage_form") @db.VarChar(100)
+  strength          String?            @db.VarChar(100)
+  inventoryUnit     String             @map("inventory_unit") @db.VarChar(30)
+  defaultSalePrice  Decimal            @default(0) @map("default_sale_price") @db.Decimal(19, 4)
+  currency          String             @db.VarChar(3)
+  lowStockThreshold Decimal            @default(0) @map("low_stock_threshold") @db.Decimal(14, 4)
+  status            String             @default("active") @db.VarChar(20)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  prescriptionItems PrescriptionItem[]
+  batches           MedicineBatch[]
+
+  @@map("medicines")
+}
+
+model MedicineBatch {
+  id                String          @id(map: "pk_medicine_batches") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicineId        String          @map("medicine_id") @db.Uuid
+  batchNumber       String          @map("batch_number") @db.VarChar(100)
+  expiryDate        DateTime        @map("expiry_date") @db.Date
+  receivedQuantity  Decimal         @map("received_quantity") @db.Decimal(14, 4)
+  unitCost          Decimal         @map("unit_cost") @db.Decimal(19, 4)
+  salePriceSnapshot Decimal         @map("sale_price_snapshot") @db.Decimal(19, 4)
+  currency          String          @db.VarChar(3)
+  receivedAt        DateTime        @default(now()) @map("received_at") @db.Timestamptz(6)
+  status            String          @default("active") @db.VarChar(20)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  medicine          Medicine        @relation(fields: [medicineId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_medicine_batches_medicine_id")
+  stockMovements    StockMovement[]
+
+  @@unique([medicineId, batchNumber], map: "uq_medicine_batches_medicine_id_batch_number")
+  @@index([medicineId, expiryDate, status], map: "idx_medicine_batches_medicine_id_expiry_date_status")
+  @@index([status, expiryDate], map: "idx_medicine_batches_status_expiry_date")
+  @@map("medicine_batches")
+}
+
+model DispenseRecord {
+  id                    String            @id(map: "pk_dispense_records") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prescriptionItemId    String            @map("prescription_item_id") @db.Uuid
+  quantityDispensed     Decimal           @map("quantity_dispensed") @db.Decimal(14, 4)
+  unit                  String            @db.VarChar(30)
+  dispensedAt           DateTime          @default(now()) @map("dispensed_at") @db.Timestamptz(6)
+  dispensedByEmployeeId String            @map("dispensed_by_employee_id") @db.Uuid
+  status                String            @default("completed") @db.VarChar(20)
+  note                  String?           @db.VarChar(500)
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  prescriptionItem      PrescriptionItem  @relation(fields: [prescriptionItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_dispense_records_prescription_item_id")
+  dispensedBy           Employee          @relation(fields: [dispensedByEmployeeId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_dispense_records_dispensed_by_employee_id")
+  reversal              DispenseReversal?
+  stockMovements        StockMovement[]
+  invoiceItems          InvoiceItem[]
+
+  @@index([prescriptionItemId, dispensedAt], map: "idx_dispense_records_prescription_item_id_dispensed_at")
+  @@index([dispensedByEmployeeId, dispensedAt(sort: Desc)], map: "idx_dispense_records_dispensed_by_employee_id_dispensed_at")
+  @@map("dispense_records")
+}
+
+model DispenseReversal {
+  id               String          @id(map: "pk_dispense_reversals") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dispenseRecordId String          @unique(map: "uq_dispense_reversals_dispense_record_id") @map("dispense_record_id") @db.Uuid
+  quantityReversed Decimal         @map("quantity_reversed") @db.Decimal(14, 4)
+  reason           String          @db.VarChar(500)
+  reversedByUserId String          @map("reversed_by_user_id") @db.Uuid
+  reversedAt       DateTime        @default(now()) @map("reversed_at") @db.Timestamptz(6)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  dispenseRecord   DispenseRecord  @relation(fields: [dispenseRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_dispense_reversals_dispense_record_id")
+  reversedBy       User            @relation(fields: [reversedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_dispense_reversals_reversed_by_user_id")
+  stockMovements   StockMovement[]
+
+  @@map("dispense_reversals")
+}
+
+model StockMovement {
+  id                  String            @id(map: "pk_stock_movements") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicineBatchId     String            @map("medicine_batch_id") @db.Uuid
+  movementType        String            @map("movement_type") @db.VarChar(20)
+  quantity            Decimal           @db.Decimal(14, 4)
+  dispenseRecordId    String?           @map("dispense_record_id") @db.Uuid
+  dispenseReversalId  String?           @map("dispense_reversal_id") @db.Uuid
+  occurredAt          DateTime          @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  performedByUserId   String            @map("performed_by_user_id") @db.Uuid
+  reason              String            @db.VarChar(500)
+  referenceIdentifier String?           @map("reference_identifier") @db.VarChar(100)
+  medicineBatch       MedicineBatch     @relation(fields: [medicineBatchId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_stock_movements_medicine_batch_id")
+  dispenseRecord      DispenseRecord?   @relation(fields: [dispenseRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_stock_movements_dispense_record_id")
+  dispenseReversal    DispenseReversal? @relation(fields: [dispenseReversalId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_stock_movements_dispense_reversal_id")
+  performedBy         User              @relation(fields: [performedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_stock_movements_performed_by_user_id")
+
+  @@index([medicineBatchId, occurredAt], map: "idx_stock_movements_medicine_batch_id_occurred_at")
+  @@index([dispenseRecordId], map: "idx_stock_movements_dispense_record_id")
+  @@index([dispenseReversalId], map: "idx_stock_movements_dispense_reversal_id")
+  @@index([occurredAt, movementType], map: "idx_stock_movements_occurred_at_movement_type")
+  @@map("stock_movements")
+}
+
+model Invoice {
+  id              String        @id(map: "pk_invoices") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceNumber   String        @unique(map: "uq_invoices_invoice_number") @map("invoice_number") @db.VarChar(50)
+  patientId       String        @map("patient_id") @db.Uuid
+  issuedAt        DateTime      @default(now()) @map("issued_at") @db.Timestamptz(6)
+  dueAt           DateTime?     @map("due_at") @db.Timestamptz(6)
+  currency        String        @db.VarChar(3)
+  subtotal        Decimal       @default(0) @db.Decimal(19, 4)
+  discountAmount  Decimal       @default(0) @map("discount_amount") @db.Decimal(19, 4)
+  taxAmount       Decimal       @default(0) @map("tax_amount") @db.Decimal(19, 4)
+  totalAmount     Decimal       @default(0) @map("total_amount") @db.Decimal(19, 4)
+  amountPaid      Decimal       @default(0) @map("amount_paid") @db.Decimal(19, 4)
+  balanceAmount   Decimal       @default(0) @map("balance_amount") @db.Decimal(19, 4)
+  status          String        @default("draft") @db.VarChar(20)
+  createdByUserId String        @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoices_patient_id")
+  createdBy       User          @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoices_created_by_user_id")
+  items           InvoiceItem[]
+  payments        Payment[]
+
+  @@index([patientId, issuedAt(sort: Desc)], map: "idx_invoices_patient_id_issued_at")
+  @@index([status, issuedAt], map: "idx_invoices_status_issued_at")
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id               String          @id(map: "pk_invoice_items") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String          @map("invoice_id") @db.Uuid
+  category         String          @db.VarChar(20)
+  description      String          @db.VarChar(500)
+  quantity         Decimal         @default(1) @db.Decimal(14, 4)
+  unitPrice        Decimal         @map("unit_price") @db.Decimal(19, 4)
+  lineTotal        Decimal         @map("line_total") @db.Decimal(19, 4)
+  appointmentId    String?         @map("appointment_id") @db.Uuid
+  labRequestItemId String?         @map("lab_request_item_id") @db.Uuid
+  dispenseRecordId String?         @map("dispense_record_id") @db.Uuid
+  admissionId      String?         @map("admission_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  invoice          Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoice_items_invoice_id")
+  appointment      Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoice_items_appointment_id")
+  labRequestItem   LabRequestItem? @relation(fields: [labRequestItemId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoice_items_lab_request_item_id")
+  dispenseRecord   DispenseRecord? @relation(fields: [dispenseRecordId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoice_items_dispense_record_id")
+  admission        Admission?      @relation(fields: [admissionId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_invoice_items_admission_id")
+
+  @@index([invoiceId], map: "idx_invoice_items_invoice_id")
+  @@map("invoice_items")
+}
+
+model Payment {
+  id                String   @id(map: "pk_payments") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentNumber     String   @unique(map: "uq_payments_payment_number") @map("payment_number") @db.VarChar(50)
+  invoiceId         String   @map("invoice_id") @db.Uuid
+  amount            Decimal  @db.Decimal(19, 4)
+  currency          String   @db.VarChar(3)
+  method            String   @db.VarChar(50)
+  externalReference String?  @map("external_reference") @db.VarChar(200)
+  status            String   @default("recorded") @db.VarChar(20)
+  paidAt            DateTime @default(now()) @map("paid_at") @db.Timestamptz(6)
+  receivedByUserId  String   @map("received_by_user_id") @db.Uuid
+  reversesPaymentId String?  @unique(map: "uq_payments_reverses_payment_id") @map("reverses_payment_id") @db.Uuid
+  note              String?  @db.VarChar(500)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  invoice           Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payments_invoice_id")
+  receivedBy        User     @relation(fields: [receivedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payments_received_by_user_id")
+  reverses          Payment? @relation("PaymentReversal", fields: [reversesPaymentId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_payments_reverses_payment_id")
+  reversedBy        Payment? @relation("PaymentReversal")
+
+  @@index([invoiceId, paidAt, status], map: "idx_payments_invoice_id_paid_at_status")
+  @@index([receivedByUserId, paidAt(sort: Desc)], map: "idx_payments_received_by_user_id_paid_at")
+  @@map("payments")
+}

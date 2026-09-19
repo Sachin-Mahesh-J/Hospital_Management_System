@@ -5,10 +5,11 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 1 initializes the frontend, backend, REST API, validation, logging, error
-handling, OpenAPI, testing, and Prisma tooling foundations. It does not implement HMS
-business modules, authentication, a physical database model, migrations, or cloud
-deployment.
+Milestone 3 implements the approved physical PostgreSQL design as Prisma models and an
+initial reviewed SQL migration under `backend/prisma/`. HMS business modules,
+authentication workflows, and cloud deployment remain outside this milestone. The
+Milestone 1 application foundations and Milestone 2 database design documents remain
+in place.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -97,8 +98,27 @@ npm run prisma:validate -w backend
 npm run prisma:generate
 ```
 
-No Prisma models or migrations are present. The physical-schema approval gate in
-`docs/database/logical-data-model.md` must pass before either is added.
+The complete Prisma schema and initial migration are present under `backend/prisma/`.
+Apply migrations only to a dedicated development database after reviewing the SQL.
+
+For local database setup, create `hms_development`, copy `backend/.env.example` to
+`backend/.env`, replace only the password placeholder, and run:
+
+```sh
+npm run prisma:validate -w backend
+npm run prisma:migrate:deploy
+npm run prisma:generate
+```
+
+Schema-level constraint tests use a separate `hms_test` database. The guarded runner
+derives its connection from the local `hms_development` URL, creates `hms_test` when
+needed, applies the migration, and refuses non-local or differently named targets:
+
+```sh
+npm run test:database
+```
+
+Neither command deploys to Supabase or any other cloud database.
 
 ## Project structure
 

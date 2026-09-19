@@ -25,6 +25,11 @@ uploads/
 .DS_Store
 Thumbs.db
 
-# Internal project documentation
+# Track root project documentation while preserving the existing ignore for nested
+# runtime/source directories named docs.
 docs/
+!/docs/
+!/docs/**
+
+# Source specification
 Hospital_system.pdf
