@@ -37,10 +37,10 @@ Expected backend configuration will include:
 - `JWT_ACCESS_SECRET` or an asymmetric signing-key equivalent
 - `JWT_ISSUER`
 - `JWT_AUDIENCE`
-- `ACCESS_TOKEN_TTL`
-- `REFRESH_TOKEN_TTL`
-- `SESSION_IDLE_TTL`
 - `ALLOWED_ORIGINS`
+- `AUTH_COOKIE_NAME`
+- `AUTH_COOKIE_DOMAIN` when a host-only cookie is not sufficient
+- `TRUST_PROXY`
 - `HOSPITAL_TIME_ZONE`
 - `DEFAULT_CURRENCY`
 - `SUPABASE_URL`
@@ -49,6 +49,11 @@ Expected backend configuration will include:
 
 Names may be refined during initialization. Real values are provider secrets; only
 variable names and safe examples belong in `.env.example`.
+
+Authentication lifetimes are security invariants in code for this milestone:
+15-minute access JWTs, seven-day absolute refresh lifetime, and a 30-minute idle
+timeout. Bootstrap credentials are one-time operator inputs, not persistent runtime
+configuration.
 
 ## Release process
 
@@ -69,6 +74,8 @@ Application startup must not run `prisma db push` or silently alter production s
 - Enable credentials only where the refresh flow requires them.
 - Refresh cookies use `Secure`, `HttpOnly`, an intentional `SameSite` setting, narrow
   path/scope, and CSRF defenses.
+- Direct Vercel-to-Render requests use `SameSite=None`, exact allowlisted Origins, and
+  the required `X-HMS-CSRF: 1` header for cookie-authentication POSTs.
 - Test browser behavior on the actual Vercel and Render URLs early.
 - Evaluate a same-origin Vercel proxy only if direct cross-site refresh cookies are
   unreliable; document any topology change.

@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import express from 'express'
 import request from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   requireAuthentication,
   requirePermission,
@@ -11,6 +11,10 @@ import {
   notFoundHandler,
 } from '../src/middleware/errorHandler.js'
 import { requestContext } from '../src/middleware/requestContext.js'
+
+vi.mock('../src/modules/audit/audit.service.js', () => ({
+  writeAudit: vi.fn().mockResolvedValue(undefined),
+}))
 
 function createErrorTestApp() {
   const app = express()
@@ -32,6 +36,7 @@ function createErrorTestApp() {
     (_request, response, next) => {
       response.locals.currentUser = {
         id: 'test-user',
+        username: 'test-user',
         roles: [],
         permissions: [],
       }

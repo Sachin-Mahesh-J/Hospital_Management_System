@@ -8,6 +8,9 @@ const validEnvironment = {
     'postgresql://postgres:local@localhost:5432/hms_development?schema=public',
   ALLOWED_ORIGINS: 'http://localhost:5173, https://hms.example.com',
   LOG_LEVEL: 'info',
+  JWT_ACCESS_SECRET: 'a-secure-secret-with-at-least-32-characters',
+  JWT_ISSUER: 'hms-api',
+  JWT_AUDIENCE: 'hms-web',
 }
 
 describe('environment configuration', () => {
@@ -20,7 +23,8 @@ describe('environment configuration', () => {
       'http://localhost:5173',
       'https://hms.example.com',
     ])
-    expect(configuration.jwt).toBeNull()
+    expect(configuration.jwt.issuer).toBe('hms-api')
+    expect(configuration.auth.cookieName).toBe('hms_refresh')
   })
 
   it('uses only the isolated test URL in the test environment', () => {
@@ -41,7 +45,7 @@ describe('environment configuration', () => {
     ).toThrow('TEST_DATABASE_URL')
   })
 
-  it('rejects invalid URLs, wildcard CORS, and partial JWT configuration', () => {
+  it('rejects invalid URLs, wildcard CORS, and missing JWT configuration', () => {
     expect(() =>
       loadEnvironment({ ...validEnvironment, DATABASE_URL: 'not-a-url' }),
     ).toThrow('DATABASE_URL')
@@ -51,7 +55,7 @@ describe('environment configuration', () => {
     expect(() =>
       loadEnvironment({
         ...validEnvironment,
-        JWT_ACCESS_SECRET: 'a-secure-secret-with-at-least-32-characters',
+        JWT_ACCESS_SECRET: undefined,
       }),
     ).toThrow('JWT_ACCESS_SECRET')
   })

@@ -1,8 +1,8 @@
 # Security Architecture
 
-Status: Approved design; configuration, CORS, safe errors, request IDs, security
-headers, and log redaction foundations are implemented. Identity, authorization,
-audit, and upload controls remain planned.
+Status: Approved design; Milestone 5 identity, RBAC, authentication audit, CORS, safe
+errors, request IDs, security headers, and log redaction are implemented. Business
+resource policies and upload controls remain planned.
 
 ## Security objectives
 
@@ -17,8 +17,7 @@ claim because jurisdiction and legal obligations are not specified.
 
 ## Authentication
 
-- Hash passwords with Argon2id using parameters selected and tested during
-  implementation.
+- Hash passwords with Argon2id (`m=19456 KiB`, `t=2`, `p=1`, 32-byte hash).
 - Return the same generic login failure for unknown users and invalid passwords.
 - Rate-limit login and refresh operations.
 - Issue short-lived signed JWT access tokens with issuer, audience, subject, expiry, and
@@ -31,9 +30,15 @@ claim because jurisdiction and legal obligations are not specified.
 - Enforce both idle and absolute session expiry.
 
 Production cross-site cookie behavior must be proven with platform URLs. Refresh/logout
-requests require credentialed CORS and CSRF protection. If browser restrictions make
-direct Vercel-to-Render refresh cookies unreliable, evaluate a same-origin Vercel API
-proxy before changing token storage.
+requests use credentialed CORS, exact Origin validation, and the non-simple
+`X-HMS-CSRF: 1` header. Production cookies are host-only where possible and use
+`Secure`, `HttpOnly`, `SameSite=None`, and `/api/v1/auth` scope. If browser restrictions
+make direct Vercel-to-Render refresh cookies unreliable, evaluate a same-origin Vercel
+API proxy before changing token storage.
+
+The implementation-defined password policy is 12–128 characters, at least one letter
+and number, and rejection of common or trivially repetitive values. It is an
+engineering policy for this milestone, not a claim from the source PDF.
 
 ## Authorization
 

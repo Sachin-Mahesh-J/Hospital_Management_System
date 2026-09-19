@@ -5,11 +5,10 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 3 implements the approved physical PostgreSQL design as Prisma models and an
-initial reviewed SQL migration under `backend/prisma/`. HMS business modules,
-authentication workflows, and cloud deployment remain outside this milestone. The
-Milestone 1 application foundations and Milestone 2 database design documents remain
-in place.
+Milestone 5 implements authentication and authorization on the approved physical
+schema: Argon2id passwords, short-lived access JWTs, rotating refresh sessions,
+permission-based access control, audit events, and an in-memory frontend session.
+Business modules and cloud deployment remain outside this milestone.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -54,6 +53,12 @@ Backend:
 - `DATABASE_URL` — PostgreSQL connection URL used by Prisma tooling.
 - `ALLOWED_ORIGINS` — comma-separated exact browser origins allowed by CORS.
 - `LOG_LEVEL` — Pino log level.
+- `JWT_ACCESS_SECRET` — high-entropy JWT signing secret (at least 32 characters).
+- `JWT_ISSUER` / `JWT_AUDIENCE` — exact access-token verification values.
+- `AUTH_COOKIE_NAME` — refresh-cookie name; defaults to `hms_refresh`.
+- `AUTH_COOKIE_DOMAIN` — optional cookie domain; normally omitted for a host-only
+  cookie.
+- `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret
 configuration.
@@ -120,16 +125,44 @@ npm run test:database
 
 Neither command deploys to Supabase or any other cloud database.
 
+## Authentication setup
+
+Authentication uses a 15-minute access JWT held only in browser memory. A rotating
+opaque refresh token is held in an HttpOnly cookie; only its SHA-256 hash is stored.
+Refresh sessions have a 30-minute idle timeout and a seven-day absolute lifetime.
+
+Bootstrap the seven approved system roles and the first administrator only after local
+migrations are applied:
+
+```powershell
+$env:HMS_BOOTSTRAP_ADMIN_USERNAME = "admin"
+$env:HMS_BOOTSTRAP_ADMIN_PASSWORD = "choose-a-strong-password-42"
+npm run bootstrap:admin -w backend
+Remove-Item Env:HMS_BOOTSTRAP_ADMIN_USERNAME, Env:HMS_BOOTSTRAP_ADMIN_PASSWORD
+```
+
+The command is explicit, transactional, safe to repeat, and does not expose a public
+registration endpoint. It refuses to replace an existing administrator or reuse a
+non-administrator username. The password policy is 12–128 characters, requires at
+least one letter and number, and rejects common or trivially repetitive values.
+
+For direct Vercel-to-Render deployment, production refresh cookies use
+`Secure; SameSite=None`, credentialed CORS accepts only configured exact origins, and
+cookie-auth POST requests require `X-HMS-CSRF: 1` plus an allowlisted `Origin`.
+Browsers that block third-party cookies may require the already-approved same-origin
+Vercel proxy fallback after deployment testing.
+
 ## Project structure
 
 ```text
 backend/
   prisma/             Prisma PostgreSQL tooling foundation
-  src/                Express API, configuration, middleware, and modules
+  src/                Express API, authentication, middleware, and modules
   test/               Supertest/Vitest API tests
 frontend/
   src/api/            Central REST client and error mapping
   src/app/            Theme and reusable application shell
+  src/features/auth/  In-memory authentication and permission-aware UI
   src/config/         Browser environment configuration
 docs/                 Requirements, architecture, security, data, and workflow docs
 ```

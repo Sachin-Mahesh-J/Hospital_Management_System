@@ -4,7 +4,10 @@ import type { RequestHandler } from 'express'
 export const requestContext: RequestHandler = (request, response, next) => {
   const suppliedId = request.header('x-request-id')
   const requestId =
-    suppliedId && /^[A-Za-z0-9._:-]{1,128}$/.test(suppliedId)
+    suppliedId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      suppliedId,
+    )
       ? suppliedId
       : randomUUID()
 

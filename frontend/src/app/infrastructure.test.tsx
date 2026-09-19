@@ -2,6 +2,7 @@ import { Button } from '@mui/material'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
+import { AuthContext, type AuthContextValue } from '../auth/authContext'
 import {
   EmptyState,
   ErrorState,
@@ -13,6 +14,21 @@ import {
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
 import { appRoutes } from './routes'
 
+const authenticatedUser = {
+  id: 'user-1',
+  username: 'clinician',
+  roles: ['CLINICIAN'],
+  permissions: ['patient:read'],
+}
+
+const authValue: AuthContextValue = {
+  user: authenticatedUser,
+  isBootstrapping: false,
+  login: async () => undefined,
+  logout: async () => undefined,
+  changePassword: async () => undefined,
+}
+
 describe('application routing', () => {
   it('renders the not-found state inside the application shell', async () => {
     const router = createMemoryRouter(appRoutes, {
@@ -20,9 +36,9 @@ describe('application routing', () => {
     })
 
     render(
-      <NotificationProvider>
+      <AuthContext value={authValue}>
         <RouterProvider router={router} />
-      </NotificationProvider>,
+      </AuthContext>,
     )
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeVisible()

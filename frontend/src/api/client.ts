@@ -8,6 +8,26 @@ type ErrorResponse = {
   }
 }
 
+type ApiResponse<T> = {
+  data: T
+}
+
+type RefreshResponse = {
+  accessToken: string
+}
+
+type RequestOptions = {
+  canRefresh?: boolean
+  hasRetried?: boolean
+}
+
+const loginPath = '/auth/login'
+const refreshPath = '/auth/refresh'
+
+let accessToken: string | null = null
+let refreshRequest: Promise<string> | null = null
+let expirationHandler: (() => void) | null = null
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string | undefined
@@ -35,35 +55,112 @@ async function parseError(response: Response): Promise<ErrorResponse> {
   return (await response.json().catch(() => ({}))) as ErrorResponse
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+function createHeaders(path: string, init: RequestInit): Headers {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`)
+  }
+  if (init.method === 'POST' && path.startsWith('/auth/')) {
+    headers.set('X-HMS-CSRF', '1')
+  }
+  return headers
+}
 
+async function execute<T>(
+  path: string,
+  init: RequestInit,
+): Promise<{ response: Response; data?: T }> {
+  const headers = createHeaders(path, init)
+
+  const response = await fetch(`${env.apiUrl}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers,
+  })
+
+  if (response.status === 204) {
+    return { response }
+  }
+
+  if (!response.ok) {
+    return { response }
+  }
+
+  const body = (await response.json()) as ApiResponse<T>
+  return { response, data: body.data }
+}
+
+async function throwResponseError(response: Response): Promise<never> {
+  const body = await parseError(response)
+  throw new ApiError(
+    body.error?.message ?? 'The request could not be completed.',
+    response.status,
+    body.error?.code,
+    body.error?.requestId,
+  )
+}
+
+function refreshAccessToken(): Promise<string> {
+  if (!refreshRequest) {
+    refreshRequest = request<RefreshResponse>(
+      refreshPath,
+      { method: 'POST' },
+      { canRefresh: false },
+    )
+      .then(({ accessToken: refreshedToken }) => {
+        accessToken = refreshedToken
+        return refreshedToken
+      })
+      .catch((error: unknown) => {
+        accessToken = null
+        expirationHandler?.()
+        throw error
+      })
+      .finally(() => {
+        refreshRequest = null
+      })
+  }
+
+  return refreshRequest
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  options: RequestOptions = {},
+): Promise<T> {
   try {
-    const response = await fetch(`${env.apiUrl}${path}`, {
-      ...init,
-      headers,
-    })
+    const { response, data } = await execute<T>(path, init)
 
     if (!response.ok) {
-      const body = await parseError(response)
+      const canRefresh = options.canRefresh
+        ?? (
+          accessToken !== null
+          && path !== loginPath
+          && path !== refreshPath
+        )
 
-      throw new ApiError(
-        body.error?.message ?? 'The request could not be completed.',
-        response.status,
-        body.error?.code,
-        body.error?.requestId,
-      )
+      if (response.status === 401 && canRefresh && !options.hasRetried) {
+        try {
+          await refreshAccessToken()
+        } catch {
+          return throwResponseError(response)
+        }
+
+        return request<T>(path, init, {
+          canRefresh: false,
+          hasRetried: true,
+        })
+      }
+
+      return throwResponseError(response)
     }
 
-    if (response.status === 204) {
-      return undefined as T
-    }
-
-    return (await response.json()) as T
+    return data as T
   } catch (error: unknown) {
     if (error instanceof ApiError) {
       throw error
@@ -75,6 +172,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       'NETWORK_ERROR',
     )
   }
+}
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token
+}
+
+export function setAuthExpirationHandler(handler: (() => void) | null): void {
+  expirationHandler = handler
+}
+
+export function refreshSession(): Promise<string> {
+  return refreshAccessToken()
 }
 
 export const apiClient = {

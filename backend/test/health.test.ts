@@ -6,12 +6,13 @@ const app = createApp()
 
 describe('GET /api/v1/health', () => {
   it('returns process health and a request ID', async () => {
+    const requestId = '7f495e55-32e1-4e14-9c3e-45c0b5a47590'
     const response = await request(app)
       .get('/api/v1/health')
-      .set('x-request-id', 'test-request-id')
+      .set('x-request-id', requestId)
       .expect(200)
 
-    expect(response.headers['x-request-id']).toBe('test-request-id')
+    expect(response.headers['x-request-id']).toBe(requestId)
     expect(response.body).toEqual({
       status: 'ok',
       service: 'hms-api',

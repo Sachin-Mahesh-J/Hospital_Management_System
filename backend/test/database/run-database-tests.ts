@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   const testUrl = await ensureTestDatabase(developmentUrl)
 
   run('npx', ['prisma', 'migrate', 'deploy'], testUrl)
-  run('npx', ['vitest', 'run', 'test/database/schema.test.ts'], testUrl)
+  run('npx', ['vitest', 'run', 'test/database'], testUrl)
 }
 
 main().catch((error: unknown) => {

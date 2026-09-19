@@ -26,26 +26,17 @@ const environmentSchema = z
   TEST_DATABASE_URL: databaseUrlSchema.optional(),
   ALLOWED_ORIGINS: z.string().min(1),
   LOG_LEVEL: logLevelSchema.default('info'),
-  JWT_ACCESS_SECRET: z.string().min(32).optional(),
-  JWT_ISSUER: z.string().min(1).optional(),
-  JWT_AUDIENCE: z.string().min(1).optional(),
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_ISSUER: z.string().min(1),
+  JWT_AUDIENCE: z.string().min(1),
+  AUTH_COOKIE_NAME: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .default('hms_refresh'),
+  AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+  TRUST_PROXY: z.enum(['true', 'false']).default('false'),
   })
   .superRefine((value, context) => {
-    const jwtValues = [
-      value.JWT_ACCESS_SECRET,
-      value.JWT_ISSUER,
-      value.JWT_AUDIENCE,
-    ]
-    const configuredJwtValues = jwtValues.filter(Boolean).length
-
-    if (configuredJwtValues > 0 && configuredJwtValues < jwtValues.length) {
-      context.addIssue({
-        code: 'custom',
-        path: ['JWT_ACCESS_SECRET'],
-        message: 'JWT configuration must be provided as a complete set',
-      })
-    }
-
     if (value.NODE_ENV === 'test' && !value.TEST_DATABASE_URL) {
       context.addIssue({
         code: 'custom',
@@ -73,7 +64,12 @@ export type AppConfig = {
     accessSecret: string
     issuer: string
     audience: string
-  } | null
+  }
+  auth: {
+    cookieName: string
+    cookieDomain: string | null
+    trustProxy: boolean
+  }
 }
 
 function parseAllowedOrigins(value: string): string[] {
@@ -107,16 +103,6 @@ export function loadEnvironment(
 
   const allowedOrigins = parseAllowedOrigins(result.data.ALLOWED_ORIGINS)
   const testUrl = result.data.TEST_DATABASE_URL ?? null
-  const jwt =
-    result.data.JWT_ACCESS_SECRET &&
-    result.data.JWT_ISSUER &&
-    result.data.JWT_AUDIENCE
-      ? {
-          accessSecret: result.data.JWT_ACCESS_SECRET,
-          issuer: result.data.JWT_ISSUER,
-          audience: result.data.JWT_AUDIENCE,
-        }
-      : null
 
   return {
     nodeEnv: result.data.NODE_ENV,
@@ -129,7 +115,16 @@ export function loadEnvironment(
     },
     cors: { allowedOrigins },
     logging: { level: result.data.LOG_LEVEL },
-    jwt,
+    jwt: {
+      accessSecret: result.data.JWT_ACCESS_SECRET,
+      issuer: result.data.JWT_ISSUER,
+      audience: result.data.JWT_AUDIENCE,
+    },
+    auth: {
+      cookieName: result.data.AUTH_COOKIE_NAME,
+      cookieDomain: result.data.AUTH_COOKIE_DOMAIN ?? null,
+      trustProxy: result.data.TRUST_PROXY === 'true',
+    },
   }
 }
 

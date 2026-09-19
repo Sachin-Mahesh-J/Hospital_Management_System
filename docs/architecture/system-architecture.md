@@ -1,7 +1,7 @@
 # System Architecture
 
-Status: Approved design; Milestone 4 core application infrastructure implemented,
-authentication and business modules remain planned
+Status: Approved design; Milestone 5 authentication and authorization implemented,
+business modules remain planned
 
 ## Implemented core infrastructure
 
@@ -11,10 +11,11 @@ authentication and business modules remain planned
   and graceful HTTP/database shutdown.
 - Versioned REST routing, request IDs, safe centralized errors, validation field
   details, bounded pagination/sorting utilities, and implemented-contract OpenAPI.
-- Authentication-ready current-user and access-control extension points. Token
-  verification, sessions, login, and authorization rules are not implemented.
+- Argon2id authentication, 15-minute JWT verification, rotating hashed refresh
+  sessions, lockout, password change, permission resolution, and security audit events.
 - Frontend routing, application shell, reusable page/loading/error/empty states,
-  notifications, and a typed central API client.
+  notifications, an in-memory authenticated-user provider, protected routes, and a
+  credentialed API client with single-flight refresh recovery.
 
 ## Architectural goals
 
