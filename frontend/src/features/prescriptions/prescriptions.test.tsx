@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '../../api/client'
 import { AuthContext, type AuthContextValue } from '../../auth/authContext'
 import { NotificationProvider } from '../../shared/notifications/NotificationProvider'
 import * as prescriptionApi from './api'
@@ -59,6 +60,8 @@ const prescription: Prescription = {
     duration: '3 days',
     instructions: null,
     quantityPrescribed: '3',
+    quantityDispensed: '0',
+    quantityRemaining: '3',
     unit: 'tablet',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -71,7 +74,9 @@ const prescription: Prescription = {
       strength: '500mg',
       inventoryUnit: 'tablet',
       status: 'active',
+      currency: 'LKR',
     },
+    dispenseRecords: [],
   }],
 }
 
@@ -167,6 +172,125 @@ describe('prescription list and detail', () => {
     )
     expect(await screen.findByText(/Fictionalcillin/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Cancel prescription' })).toBeNull()
+  })
+
+  it('dispenses an explicit remaining quantity', async () => {
+    vi.mocked(prescriptionApi.fetchPrescription).mockResolvedValue(prescription)
+    vi.mocked(prescriptionApi.dispensePrescriptionItem).mockResolvedValue({
+      ...prescription,
+      status: 'partially_dispensed',
+      items: [{
+        ...prescription.items[0]!,
+        quantityDispensed: '1',
+        quantityRemaining: '2',
+      }],
+    })
+    render(
+      <QueryClientProvider client={createClient()}>
+        <NotificationProvider>
+          <AuthContext value={authValue(['prescription.read', 'prescription.dispense'])}>
+            <MemoryRouter initialEntries={[`/prescriptions/${prescription.id}`]}>
+              <Routes>
+                <Route path="/prescriptions/:prescriptionId" element={<PrescriptionDetailPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthContext>
+        </NotificationProvider>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText(/Remaining/)).toBeVisible()
+    fireEvent.change(screen.getByLabelText(/Dispense quantity/), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Dispense' }))
+    await waitFor(() =>
+      expect(prescriptionApi.dispensePrescriptionItem).toHaveBeenCalledWith(
+        prescription.id,
+        'item-1',
+        { quantity: '1', note: null },
+      ),
+    )
+  })
+
+  it('reverses a completed dispense with a required reason', async () => {
+    const dispensed: Prescription = {
+      ...prescription,
+      status: 'partially_dispensed',
+      items: [{
+        ...prescription.items[0]!,
+        quantityDispensed: '1',
+        quantityRemaining: '2',
+        dispenseRecords: [{
+          id: 'dispense-1',
+          quantityDispensed: '1',
+          unit: 'tablet',
+          dispensedAt: '2030-03-02T14:00:00.000Z',
+          dispensedByEmployeeId: '33333333-3333-4333-8333-333333333333',
+          status: 'completed',
+          note: null,
+          reversed: false,
+          reversal: null,
+          dispensedBy: {
+            id: '33333333-3333-4333-8333-333333333333',
+            employeeNumber: 'E-1',
+            firstName: 'Fictional',
+            lastName: 'Pharmacist',
+            employmentStatus: 'active',
+          },
+        }],
+      }],
+    }
+    vi.mocked(prescriptionApi.fetchPrescription).mockResolvedValue(dispensed)
+    vi.mocked(prescriptionApi.reverseDispense).mockResolvedValue({
+      ...prescription,
+      status: 'active',
+    })
+    render(
+      <QueryClientProvider client={createClient()}>
+        <NotificationProvider>
+          <AuthContext value={authValue(['prescription.read', 'prescription.reverse'])}>
+            <MemoryRouter initialEntries={[`/prescriptions/${prescription.id}`]}>
+              <Routes>
+                <Route path="/prescriptions/:prescriptionId" element={<PrescriptionDetailPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthContext>
+        </NotificationProvider>
+      </QueryClientProvider>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Reverse dispense' }))
+    fireEvent.change(screen.getByLabelText('Reversal reason'), {
+      target: { value: 'Incorrect quantity' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm reversal' }))
+    await waitFor(() =>
+      expect(prescriptionApi.reverseDispense).toHaveBeenCalledWith(
+        prescription.id,
+        'dispense-1',
+        'Incorrect quantity',
+      ),
+    )
+  })
+
+  it('shows a domain error when remaining quantity is exceeded', async () => {
+    vi.mocked(prescriptionApi.fetchPrescription).mockResolvedValue(prescription)
+    vi.mocked(prescriptionApi.dispensePrescriptionItem).mockRejectedValue(
+      new ApiError('Requested quantity exceeds remaining prescribed quantity.', 409),
+    )
+    render(
+      <QueryClientProvider client={createClient()}>
+        <NotificationProvider>
+          <AuthContext value={authValue(['prescription.read', 'prescription.dispense'])}>
+            <MemoryRouter initialEntries={[`/prescriptions/${prescription.id}`]}>
+              <Routes>
+                <Route path="/prescriptions/:prescriptionId" element={<PrescriptionDetailPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthContext>
+        </NotificationProvider>
+      </QueryClientProvider>,
+    )
+    fireEvent.change(await screen.findByLabelText(/Dispense quantity/), { target: { value: '20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Dispense' }))
+    expect(await screen.findByText(/exceeds remaining prescribed quantity/)).toBeVisible()
   })
 })
 

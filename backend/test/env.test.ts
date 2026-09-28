@@ -11,6 +11,7 @@ const validEnvironment = {
   JWT_ACCESS_SECRET: 'a-secure-secret-with-at-least-32-characters',
   JWT_ISSUER: 'hms-api',
   JWT_AUDIENCE: 'hms-web',
+  HOSPITAL_TIMEZONE: 'Asia/Colombo',
 }
 
 describe('environment configuration', () => {
@@ -25,6 +26,7 @@ describe('environment configuration', () => {
     ])
     expect(configuration.jwt.issuer).toBe('hms-api')
     expect(configuration.auth.cookieName).toBe('hms_refresh')
+    expect(configuration.hospital.timezone).toBe('Asia/Colombo')
   })
 
   it('uses only the isolated test URL in the test environment', () => {
@@ -55,8 +57,8 @@ describe('environment configuration', () => {
     expect(() =>
       loadEnvironment({
         ...validEnvironment,
-        JWT_ACCESS_SECRET: undefined,
+        HOSPITAL_TIMEZONE: 'Not/AZone',
       }),
-    ).toThrow('JWT_ACCESS_SECRET')
+    ).toThrow('HOSPITAL_TIMEZONE')
   })
 })

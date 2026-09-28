@@ -13,6 +13,8 @@ describe('logger redaction', () => {
         '*.resultValue',
         '*.resultNote',
         '*.referenceRangeSnapshot',
+        'req.body.note',
+        'req.body.reason',
       ]),
     )
   })

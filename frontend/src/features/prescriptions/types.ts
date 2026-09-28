@@ -38,6 +38,30 @@ export type MedicineCatalogItem = {
   strength: string | null
   inventoryUnit: string
   status: string
+  currency: string
+}
+
+export type PrescriptionDispense = {
+  id: string
+  quantityDispensed: string
+  unit: string
+  dispensedAt: string
+  dispensedByEmployeeId: string
+  status: string
+  note: string | null
+  reversed: boolean
+  reversal: {
+    id: string
+    quantityReversed: string
+    reversedAt: string
+  } | null
+  dispensedBy: {
+    id: string
+    employeeNumber: string
+    firstName: string
+    lastName: string
+    employmentStatus: string
+  }
 }
 
 export type PrescriptionItem = {
@@ -49,10 +73,13 @@ export type PrescriptionItem = {
   duration: string
   instructions: string | null
   quantityPrescribed: string
+  quantityDispensed: string
+  quantityRemaining: string
   unit: string
   createdAt: string
   updatedAt: string
   medicine: MedicineCatalogItem
+  dispenseRecords: PrescriptionDispense[]
 }
 
 export type PrescriptionListItem = {

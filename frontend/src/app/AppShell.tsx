@@ -55,6 +55,16 @@ const navigation = [
     permission: 'lab_request.read',
   },
   {
+    label: 'Inventory',
+    path: '/pharmacy/inventory',
+    permission: 'inventory.read',
+  },
+  {
+    label: 'Movements',
+    path: '/pharmacy/movements',
+    permission: 'stock.movement.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

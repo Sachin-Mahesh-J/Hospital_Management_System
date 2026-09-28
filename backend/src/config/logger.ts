@@ -32,6 +32,8 @@ export const logRedactPaths = [
   'req.body.resultValue',
   'req.body.resultNote',
   'req.body.referenceRangeSnapshot',
+  'req.body.note',
+  'req.body.reason',
   '*.diagnosisText',
   '*.treatmentText',
   '*.reportText',

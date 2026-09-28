@@ -9,6 +9,7 @@ export type MedicineCatalogDto = {
   strength: string | null
   inventoryUnit: string
   status: string
+  currency: string
 }
 
 export function toMedicineCatalogDto(medicine: Medicine): MedicineCatalogDto {
@@ -21,5 +22,6 @@ export function toMedicineCatalogDto(medicine: Medicine): MedicineCatalogDto {
     strength: medicine.strength,
     inventoryUnit: medicine.inventoryUnit,
     status: medicine.status,
+    currency: medicine.currency,
   }
 }

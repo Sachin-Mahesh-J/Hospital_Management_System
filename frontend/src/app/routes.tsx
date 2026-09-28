@@ -36,6 +36,10 @@ import { LaboratoryCreatePage } from '../features/laboratory/LaboratoryCreatePag
 import { LaboratoryDetailPage } from '../features/laboratory/LaboratoryDetailPage'
 import { LaboratoryListPage } from '../features/laboratory/LaboratoryListPage'
 import { LaboratoryReportPage } from '../features/laboratory/LaboratoryReportPage'
+import { InventoryListPage } from '../features/pharmacy/InventoryListPage'
+import { StockAdjustPage } from '../features/pharmacy/StockAdjustPage'
+import { StockMovementListPage } from '../features/pharmacy/StockMovementListPage'
+import { StockReceivePage } from '../features/pharmacy/StockReceivePage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
@@ -242,6 +246,35 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="lab_request.create" />,
                     children: [
                       { path: 'new', element: <LaboratoryCreatePage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'pharmacy',
+                children: [
+                  {
+                    element: <PermissionRoute permission="inventory.read" />,
+                    children: [
+                      { path: 'inventory', element: <InventoryListPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="stock.receive" />,
+                    children: [
+                      { path: 'inventory/receive', element: <StockReceivePage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="stock.adjust" />,
+                    children: [
+                      { path: 'inventory/adjust', element: <StockAdjustPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="stock.movement.read" />,
+                    children: [
+                      { path: 'movements', element: <StockMovementListPage /> },
                     ],
                   },
                 ],

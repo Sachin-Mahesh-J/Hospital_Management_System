@@ -49,11 +49,11 @@ Cursor must not commit or push unless explicitly instructed.
 Logical design precedes scaffolding, but the physical Prisma migration follows Prisma
 project initialization.
 
-Product Milestone 10 delivered laboratory requests, sample collection, result
-entry, and on-screen printable reports, including laboratory permissions, D1
-identity mapping, and TanStack Query, as documented in
-`docs/development/laboratory-management.md`. Pharmacy inventory/dispensing,
-billing, admissions management, and JWT-level identity mapping remain deferred.
+Product Milestone 11 delivered pharmacy inventory, receiving, adjustments,
+append-only movements, prescription dispensing, partial dispensing, and full
+dispense reversal, including pharmacy permissions, D1 dispensing identity, and
+TanStack Query, as documented in `docs/development/pharmacy-management.md`.
+Billing, admissions management, and JWT-level identity mapping remain deferred.
 
 ## Testing strategy
 

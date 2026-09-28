@@ -291,6 +291,40 @@ These IDs are approved by D-023. They are retained for traceability.
 | L-025 | A — completed results use `lab_request.read` |
 | L-026 | A — no laboratory list on patient detail this milestone |
 
+### D-024 — Pharmacy management authorization and workflow
+
+D-024 is APPROVED and is the Milestone 11 pharmacy policy. It supersedes the
+previously pending pharmacy alternatives (P-001–P-023) as active policy. Those
+IDs remain traceability references only.
+
+Permissions:
+
+| Permission | Administrator | Doctor | Nurse | Receptionist | Laboratory Staff | Pharmacist | Accountant |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `medicine.read` | no | yes | no | no | no | yes | no |
+| `inventory.read` | yes | no | no | no | no | yes | no |
+| `stock.receive` | no | no | no | no | no | yes | no |
+| `stock.adjust` | yes | no | no | no | no | yes | no |
+| `stock.movement.read` | yes | no | no | no | no | yes | no |
+| `prescription.read` | yes | yes | yes | no | no | yes | no |
+| `prescription.dispense` | no | no | no | no | no | yes | no |
+| `prescription.reverse` | yes | no | no | no | no | yes | no |
+
+The medicine catalog remains application-read-only. Available stock is derived
+from append-only stock movements. Duplicate `(medicine_id, batch_number)`
+receiving is rejected under the existing unique constraint. Adjustments require
+a reason and cannot reduce available stock below zero. Expiry is batch-level and
+is checked against `HOSPITAL_TIMEZONE`; there is no expiry job.
+
+Pharmacy owns `active → partially_dispensed → dispensed`. Partial dispensing is
+allowed. Remaining quantity is prescribed minus effective unreversed dispensed
+quantity. Dispensing identity uses D1. Batches are selected automatically using
+a documented technical ordering, not FIFO/FEFO hospital policy. D-020 full
+reversal remains unchanged and does not reverse invoices or payments. Billing
+writes and reports/analytics are out of this milestone.
+
+Full context: `docs/development/pharmacy-management.md`.
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:
@@ -310,9 +344,10 @@ These require a decision before implementing their affected module:
   reference-range engines, finalizer eligibility, cancellation, and result
   correction. Milestone 10 application policy is D-023. Corrected-result **storage**
   remains D-014 for a later workflow.
-- Pharmacy receiving, stock thresholds, adjustment authorization, damaged stock, and
-  expired stock disposal. Canonical units and full dispensing reversal are resolved by
-  D-015 and D-020.
+- Pharmacy stock thresholds, damaged-stock disposal operating policy, and
+  near-expiry alerts. Canonical units, full dispensing reversal, receiving,
+  adjustments, derived inventory, partial dispensing, and pharmacy permissions
+  are resolved by D-015, D-020, and D-024.
 - Enabled tax/discount rules, payment methods, billing idempotency/granularity, invoice
   numbering, receipt format, revenue recognition, and default currency. Partial
   payments, overpayment rejection, and linked reversals are resolved by D-016.

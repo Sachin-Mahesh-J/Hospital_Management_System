@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.7.0',
+    version: '0.8.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -822,7 +822,7 @@ export const openApiDocument = {
     '/api/v1/prescriptions/{id}/cancel': {
       post: {
         summary: 'Cancel an active prescription',
-        description: 'Requires prescription.cancel. Allowed only from active. The prescription is retained. Cancellation reason is stored in audit metadata. Pharmacy dispense states are not changed by this module.',
+        description: 'Requires prescription.cancel. Allowed only from active. Partially or fully dispensed prescriptions cannot be cancelled. The prescription is retained. Cancellation reason is stored in audit metadata.',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         requestBody: {
@@ -842,7 +842,7 @@ export const openApiDocument = {
     '/api/v1/medicines': {
       get: {
         summary: 'List active medicines for prescribing',
-        description: 'Requires medicine.read. Returns only active medicines. This is not pharmacy inventory management.',
+        description: 'Requires medicine.read. Returns only active medicines. This is catalog read, not inventory management.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
@@ -978,6 +978,136 @@ export const openApiDocument = {
           '403': { description: 'lab_result.enter is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '404': { description: 'Laboratory request or item not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '409': { description: 'Item is not collected, a result already exists, or employee identity is missing/inactive.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/pharmacy/inventory': {
+      get: {
+        summary: 'List pharmacy inventory batches',
+        description: 'Requires inventory.read. Available quantity is derived from append-only stock movements. Unit costs are not returned.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'medicineId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'depleted', 'expired', 'quarantined'] } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['genericName', 'expiryDate', 'batchNumber', 'receivedAt'], default: 'expiryDate' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated inventory batches.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InventoryListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'inventory.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/pharmacy/movements': {
+      get: {
+        summary: 'List append-only stock movements',
+        description: 'Requires stock.movement.read. Movements cannot be updated or deleted.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'medicineId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'medicineBatchId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'movementType', in: 'query', schema: { type: 'string', enum: ['receipt', 'dispense', 'adjustment', 'return', 'disposal'] } },
+          { name: 'occurredAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'occurredAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['occurredAt', 'movementType'], default: 'occurredAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated stock movements.', content: { 'application/json': { schema: { $ref: '#/components/schemas/StockMovementListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'stock.movement.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/pharmacy/receipts': {
+      post: {
+        summary: 'Receive a medicine batch',
+        description: 'Requires stock.receive. Creates a new batch and an equal receipt movement atomically. Duplicate (medicineId, batchNumber) is rejected. Inactive medicines are rejected. Client-supplied actor IDs are rejected.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ReceiveStockRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Batch received.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ReceiveStockResponse' } } } },
+          '400': { description: 'Invalid receiving data or unexpected actor fields.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'stock.receive is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medicine was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Inactive medicine or duplicate batch number.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/pharmacy/adjustments': {
+      post: {
+        summary: 'Append a stock adjustment',
+        description: 'Requires stock.adjust. A reason is required. Negative adjustments cannot reduce available stock below zero. Existing movements are not updated or deleted.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AdjustStockRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Adjustment movement created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/StockMovementResponse' } } } },
+          '400': { description: 'Invalid adjustment data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'stock.adjust is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medicine batch was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Adjustment would reduce available stock below zero.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/prescriptions/{id}/items/{itemId}/dispense': {
+      post: {
+        summary: 'Dispense a prescription item',
+        description: 'Requires prescription.dispense. Actor identity is derived from the authenticated user to an active employee. Batches are selected automatically. Partial dispensing is allowed. Client-supplied actor or batch IDs are rejected.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'itemId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/DispenseItemRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Dispense recorded and prescription status recalculated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionDetailResponse' } } } },
+          '400': { description: 'Invalid quantity or unexpected actor/batch fields.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.dispense is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Prescription, item, or medicine was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Cancelled or fully dispensed prescription, remaining quantity exceeded, insufficient or expired stock, inactive medicine, missing employee mapping, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/prescriptions/{id}/dispenses/{dispenseId}/reverse': {
+      post: {
+        summary: 'Fully reverse a completed dispense',
+        description: 'Requires prescription.reverse. Reverses the complete dispense once, appends return movements, restores stock, and recalculates prescription status. Invoices and payments are not reversed. Partial reversal is not allowed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'dispenseId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ReverseDispenseRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Dispense reversed and prescription status recalculated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionDetailResponse' } } } },
+          '400': { description: 'Invalid reversal data or unexpected actor fields.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.reverse is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Prescription or dispense was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Dispense already reversed or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -1792,7 +1922,7 @@ export const openApiDocument = {
                 type: 'array',
                 items: {
                   type: 'object',
-                  required: ['id', 'medicineId', 'dosage', 'route', 'frequency', 'duration', 'instructions', 'quantityPrescribed', 'unit', 'createdAt', 'updatedAt', 'medicine'],
+                  required: ['id', 'medicineId', 'dosage', 'route', 'frequency', 'duration', 'instructions', 'quantityPrescribed', 'quantityDispensed', 'quantityRemaining', 'unit', 'createdAt', 'updatedAt', 'medicine', 'dispenseRecords'],
                   properties: {
                     id: { type: 'string', format: 'uuid' },
                     medicineId: { type: 'string', format: 'uuid' },
@@ -1802,10 +1932,16 @@ export const openApiDocument = {
                     duration: { type: 'string' },
                     instructions: { type: ['string', 'null'] },
                     quantityPrescribed: { type: 'string' },
+                    quantityDispensed: { type: 'string' },
+                    quantityRemaining: { type: 'string' },
                     unit: { type: 'string' },
                     createdAt: { type: 'string', format: 'date-time' },
                     updatedAt: { type: 'string', format: 'date-time' },
                     medicine: { $ref: '#/components/schemas/MedicineCatalogItem' },
+                    dispenseRecords: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/PrescriptionDispenseRecord' },
+                    },
                   },
                 },
               },
@@ -1828,7 +1964,7 @@ export const openApiDocument = {
       },
       MedicineCatalogItem: {
         type: 'object',
-        required: ['id', 'code', 'genericName', 'brandName', 'dosageForm', 'strength', 'inventoryUnit', 'status'],
+        required: ['id', 'code', 'genericName', 'brandName', 'dosageForm', 'strength', 'inventoryUnit', 'status', 'currency'],
         properties: {
           id: { type: 'string', format: 'uuid' },
           code: { type: 'string' },
@@ -1838,6 +1974,7 @@ export const openApiDocument = {
           strength: { type: ['string', 'null'] },
           inventoryUnit: { type: 'string' },
           status: { type: 'string', enum: ['active', 'inactive'] },
+          currency: { type: 'string' },
         },
       },
       MedicineListResponse: {
@@ -2007,6 +2144,157 @@ export const openApiDocument = {
         properties: {
           data: { type: 'array', items: { $ref: '#/components/schemas/LabRequestListItem' } },
           meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      ReceiveStockRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['medicineId', 'batchNumber', 'expiryDate', 'quantity', 'unitCost', 'salePriceSnapshot', 'currency'],
+        properties: {
+          medicineId: { type: 'string', format: 'uuid' },
+          batchNumber: { type: 'string', minLength: 1, maxLength: 100 },
+          expiryDate: { type: 'string', format: 'date' },
+          quantity: { type: ['number', 'string'] },
+          unitCost: { type: ['number', 'string'] },
+          salePriceSnapshot: { type: ['number', 'string'] },
+          currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+        },
+      },
+      AdjustStockRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['medicineBatchId', 'quantity', 'reason'],
+        properties: {
+          medicineBatchId: { type: 'string', format: 'uuid' },
+          quantity: { type: ['number', 'string'] },
+          reason: { type: 'string', minLength: 1, maxLength: 500 },
+        },
+      },
+      DispenseItemRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['quantity'],
+        properties: {
+          quantity: { type: ['number', 'string'] },
+          note: { type: ['string', 'null'], maxLength: 500 },
+        },
+      },
+      ReverseDispenseRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['reason'],
+        properties: {
+          reason: { type: 'string', minLength: 1, maxLength: 500 },
+        },
+      },
+      InventoryBatch: {
+        type: 'object',
+        required: ['id', 'medicineId', 'batchNumber', 'expiryDate', 'receivedQuantity', 'availableQuantity', 'status', 'receivedAt', 'createdAt', 'updatedAt', 'medicine'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          medicineId: { type: 'string', format: 'uuid' },
+          batchNumber: { type: 'string' },
+          expiryDate: { type: 'string', format: 'date' },
+          receivedQuantity: { type: 'string' },
+          availableQuantity: { type: 'string' },
+          status: { type: 'string' },
+          receivedAt: { type: 'string', format: 'date-time' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          medicine: { $ref: '#/components/schemas/MedicineCatalogItem' },
+        },
+      },
+      InventoryListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/InventoryBatch' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      ReceiveStockResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'object',
+            required: ['batch', 'movementId'],
+            properties: {
+              batch: { $ref: '#/components/schemas/InventoryBatch' },
+              movementId: { type: 'string', format: 'uuid' },
+            },
+          },
+        },
+      },
+      StockMovement: {
+        type: 'object',
+        required: ['id', 'medicineBatchId', 'movementType', 'quantity', 'occurredAt', 'reason', 'referenceIdentifier', 'dispenseRecordId', 'dispenseReversalId', 'medicineBatch', 'performedBy'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          medicineBatchId: { type: 'string', format: 'uuid' },
+          movementType: { type: 'string', enum: ['receipt', 'dispense', 'adjustment', 'return', 'disposal'] },
+          quantity: { type: 'string' },
+          occurredAt: { type: 'string', format: 'date-time' },
+          reason: { type: 'string' },
+          referenceIdentifier: { type: ['string', 'null'] },
+          dispenseRecordId: { type: ['string', 'null'], format: 'uuid' },
+          dispenseReversalId: { type: ['string', 'null'], format: 'uuid' },
+          medicineBatch: {
+            type: 'object',
+            required: ['id', 'batchNumber', 'expiryDate', 'status', 'medicine'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              batchNumber: { type: 'string' },
+              expiryDate: { type: 'string', format: 'date' },
+              status: { type: 'string' },
+              medicine: { $ref: '#/components/schemas/MedicineCatalogItem' },
+            },
+          },
+          performedBy: {
+            type: 'object',
+            required: ['id', 'username'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              username: { type: 'string' },
+            },
+          },
+        },
+      },
+      StockMovementResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/StockMovement' } },
+      },
+      StockMovementListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/StockMovement' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      PrescriptionDispenseRecord: {
+        type: 'object',
+        required: ['id', 'quantityDispensed', 'unit', 'dispensedAt', 'dispensedByEmployeeId', 'status', 'note', 'reversed', 'reversal', 'dispensedBy'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          quantityDispensed: { type: 'string' },
+          unit: { type: 'string' },
+          dispensedAt: { type: 'string', format: 'date-time' },
+          dispensedByEmployeeId: { type: 'string', format: 'uuid' },
+          status: { type: 'string', const: 'completed' },
+          note: { type: ['string', 'null'] },
+          reversed: { type: 'boolean' },
+          reversal: {
+            type: ['object', 'null'],
+            required: ['id', 'quantityReversed', 'reversedAt'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              quantityReversed: { type: 'string' },
+              reversedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+          dispensedBy: { $ref: '#/components/schemas/LabEmployeeSummary' },
         },
       },
       ErrorResponse: {

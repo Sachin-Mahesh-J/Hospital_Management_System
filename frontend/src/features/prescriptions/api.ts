@@ -69,6 +69,28 @@ export function cancelPrescription(
   )
 }
 
+export function dispensePrescriptionItem(
+  prescriptionId: string,
+  itemId: string,
+  input: { quantity: string; note?: string | null },
+): Promise<Prescription> {
+  return apiClient.post<Prescription>(
+    `/prescriptions/${encodeURIComponent(prescriptionId)}/items/${encodeURIComponent(itemId)}/dispense`,
+    input,
+  )
+}
+
+export function reverseDispense(
+  prescriptionId: string,
+  dispenseId: string,
+  reason: string,
+): Promise<Prescription> {
+  return apiClient.post<Prescription>(
+    `/prescriptions/${encodeURIComponent(prescriptionId)}/dispenses/${encodeURIComponent(dispenseId)}/reverse`,
+    { reason },
+  )
+}
+
 export async function fetchMedicines(
   filters: MedicineFilters,
 ): Promise<MedicineListResult> {

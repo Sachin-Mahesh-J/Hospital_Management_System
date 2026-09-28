@@ -67,6 +67,13 @@ engineering policy for this milestone, not a claim from the source PDF.
   in `docs/development/laboratory-management.md`. Requesting-doctor, collector,
   and result-enterer identity is derived from the database. `patient.read` is not
   laboratory access. Administrator laboratory access is read-only.
+- Pharmacy Management currently authorizes `medicine.read`, `inventory.read`,
+  `stock.receive`, `stock.adjust`, `stock.movement.read`, `prescription.read`,
+  `prescription.dispense`, and `prescription.reverse` as documented in
+  `docs/development/pharmacy-management.md`. Dispensing identity is derived from
+  the database. Client-supplied actor IDs are rejected. Administrator pharmacy
+  access excludes receiving and dispensing. `patient.read` is not pharmacy
+  access.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

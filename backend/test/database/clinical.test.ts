@@ -60,7 +60,7 @@ const roleMatrix = {
     PERMISSIONS.patientRead,
   ],
   laboratory_staff: [],
-  pharmacist: [PERMISSIONS.prescriptionRead],
+  pharmacist: [PERMISSIONS.prescriptionRead, PERMISSIONS.medicineRead],
   accountant: [],
 } as const
 
@@ -803,7 +803,7 @@ describe('medical record workflow', () => {
     const codes = doctorList.body.data.map((row: { code: string }) => row.code)
     expect(codes).toContain(`MED-${prefix}-A`)
     expect(codes).not.toContain(`MED-${prefix}-I`)
-    expect((await authorized('get', '/api/v1/medicines', 'pharmacist')).status).toBe(403)
+    expect((await authorized('get', '/api/v1/medicines', 'pharmacist')).status).toBe(200)
     expect((await authorized('get', '/api/v1/medicines', 'administrator')).status).toBe(403)
   })
 

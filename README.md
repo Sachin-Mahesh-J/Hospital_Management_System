@@ -5,9 +5,10 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 10 implemented laboratory requests, sample collection, result entry,
-and on-screen reports under D-023. Pharmacy inventory, dispensing, billing, and
-admissions management remain deferred.
+Milestone 11 implemented pharmacy inventory, stock receiving and adjustments,
+append-only stock movements, prescription dispensing, partial dispensing, and
+full dispense reversal under D-024. Billing and admissions management remain
+deferred.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -58,6 +59,7 @@ Backend:
 - `AUTH_COOKIE_DOMAIN` — optional cookie domain; normally omitted for a host-only
   cookie.
 - `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
+- `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry boundaries.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret
 configuration.

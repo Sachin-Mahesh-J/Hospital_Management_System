@@ -16,7 +16,16 @@ const prescriptionInclude = {
   patient: true,
   medicalRecord: { select: { id: true, status: true, patientId: true } },
   prescribedBy: { include: { employee: true } },
-  items: { include: { medicine: true }, orderBy: { createdAt: 'asc' as const } },
+  items: {
+    include: {
+      medicine: true,
+      dispenseRecords: {
+        include: { reversal: true, dispensedBy: true },
+        orderBy: { dispensedAt: 'asc' as const },
+      },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
 } as const
 
 function listWhere(

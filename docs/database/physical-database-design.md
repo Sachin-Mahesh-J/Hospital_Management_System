@@ -1052,8 +1052,9 @@ application workflow or production use:
   columns unused.
 - Patient document categories, size/MIME allowlists, retention, and malware scanning.
 - Leave types, allowances, overlap rules, attendance capture method, and corrections.
-- Pharmacy batch receiving/expiry acceptance, adjustment authorization, threshold
-  policy, and expired/damaged stock disposal. Full dispensing reversal is resolved by
+- Pharmacy batch near-expiry alerts, damaged-stock disposal operating policy, and
+  catalog-write APIs. Receiving, adjustments, derived inventory, dispensing, and
+  full reversal application policy are D-024. Full dispensing reversal storage is
   D-020.
 - Enabled tax/discount rules, invoice numbering, payment methods, receipt format, and
   revenue recognition, plus billing idempotency/granularity. Refunds are outside the

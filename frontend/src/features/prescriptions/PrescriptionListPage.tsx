@@ -27,7 +27,7 @@ export function PrescriptionListPage() {
   return (
     <Page
       title="Prescriptions"
-      description="View prescriptions. Dispensing belongs to a later pharmacy milestone."
+      description="View prescriptions, remaining quantities, and pharmacy dispensing where permitted."
     >
       {query.isLoading && <LoadingState label="Loading prescriptions" />}
       {query.isError && (

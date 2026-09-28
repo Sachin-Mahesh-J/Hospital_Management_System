@@ -6,15 +6,18 @@ import {
 import {
   cancelPrescription,
   createPrescription,
+  dispensePrescriptionItem,
   fetchMedicines,
   fetchPrescription,
   fetchPrescriptions,
+  reverseDispense,
 } from './api'
 import type {
   MedicineFilters,
   PrescriptionFilters,
   PrescriptionInput,
 } from './types'
+import { pharmacyKeys } from '../pharmacy/hooks'
 
 export const prescriptionKeys = {
   all: ['prescriptions'] as const,
@@ -64,6 +67,8 @@ async function invalidatePrescriptionQueries(
 ) {
   await queryClient.invalidateQueries({ queryKey: prescriptionKeys.lists() })
   await queryClient.invalidateQueries({ queryKey: ['medical-records'] })
+  await queryClient.invalidateQueries({ queryKey: pharmacyKeys.inventories() })
+  await queryClient.invalidateQueries({ queryKey: pharmacyKeys.movements() })
   for (const id of ids) {
     if (id) {
       await queryClient.invalidateQueries({ queryKey: prescriptionKeys.detail(id) })
@@ -90,6 +95,37 @@ export function useCancelPrescription(id: string) {
     onSuccess: async (prescription) => {
       queryClient.setQueryData(prescriptionKeys.detail(id), prescription)
       await invalidatePrescriptionQueries(queryClient, id)
+    },
+  })
+}
+
+export function useDispensePrescriptionItem(prescriptionId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      quantity,
+      note,
+    }: {
+      itemId: string
+      quantity: string
+      note?: string | null
+    }) => dispensePrescriptionItem(prescriptionId, itemId, { quantity, note }),
+    onSuccess: async (prescription) => {
+      queryClient.setQueryData(prescriptionKeys.detail(prescriptionId), prescription)
+      await invalidatePrescriptionQueries(queryClient, prescriptionId)
+    },
+  })
+}
+
+export function useReverseDispense(prescriptionId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ dispenseId, reason }: { dispenseId: string; reason: string }) =>
+      reverseDispense(prescriptionId, dispenseId, reason),
+    onSuccess: async (prescription) => {
+      queryClient.setQueryData(prescriptionKeys.detail(prescriptionId), prescription)
+      await invalidatePrescriptionQueries(queryClient, prescriptionId)
     },
   })
 }

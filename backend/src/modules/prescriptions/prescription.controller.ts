@@ -12,6 +12,16 @@ import {
   getPrescriptions,
   registerPrescription,
 } from './prescription.service.js'
+import {
+  dispensePrescriptionItem,
+  reverseDispense,
+} from '../pharmacy/pharmacy.service.js'
+import {
+  dispenseItemBodySchema,
+  prescriptionDispenseParamsSchema,
+  prescriptionItemParamsSchema,
+  reverseDispenseBodySchema,
+} from '../pharmacy/pharmacy.schemas.js'
 
 function mutationContext(response: Parameters<RequestHandler>[1]) {
   return {
@@ -74,6 +84,46 @@ export const cancelPrescriptionController: RequestHandler = async (
     const prescription = await cancelPrescription(
       id,
       cancelPrescriptionBodySchema.parse(request.body),
+      mutationContext(response),
+    )
+    sendSuccess(response, prescription)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const dispensePrescriptionItemController: RequestHandler = async (
+  request,
+  response,
+  next,
+) => {
+  try {
+    const { id, itemId } = prescriptionItemParamsSchema.parse(request.params)
+    const prescription = await dispensePrescriptionItem(
+      id,
+      itemId,
+      dispenseItemBodySchema.parse(request.body),
+      mutationContext(response),
+    )
+    sendSuccess(response, prescription)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const reverseDispenseController: RequestHandler = async (
+  request,
+  response,
+  next,
+) => {
+  try {
+    const { id, dispenseId } = prescriptionDispenseParamsSchema.parse(
+      request.params,
+    )
+    const prescription = await reverseDispense(
+      id,
+      dispenseId,
+      reverseDispenseBodySchema.parse(request.body),
       mutationContext(response),
     )
     sendSuccess(response, prescription)

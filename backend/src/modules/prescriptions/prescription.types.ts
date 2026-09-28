@@ -1,4 +1,6 @@
 import type {
+  DispenseRecord,
+  DispenseReversal,
   DoctorProfile,
   Employee,
   MedicalRecord,
@@ -7,12 +9,27 @@ import type {
   Prescription,
   PrescriptionItem,
 } from '@prisma/client'
+import {
+  decimalString,
+  remainingQuantity,
+  toDecimal,
+} from '../pharmacy/pharmacy.lifecycle.js'
 
 export type PrescriptionRecord = Prescription & {
   patient: Patient
   medicalRecord: Pick<MedicalRecord, 'id' | 'status' | 'patientId'>
   prescribedBy: DoctorProfile & { employee: Employee }
-  items: Array<PrescriptionItem & { medicine: Medicine }>
+  items: Array<
+    PrescriptionItem & {
+      medicine: Medicine
+      dispenseRecords: Array<
+        DispenseRecord & {
+          reversal: DispenseReversal | null
+          dispensedBy: Employee
+        }
+      >
+    }
+  >
 }
 
 type PatientSummary = {
@@ -37,6 +54,29 @@ type PrescriberSummary = {
   }
 }
 
+export type PrescriptionDispenseDto = {
+  id: string
+  quantityDispensed: string
+  unit: string
+  dispensedAt: string
+  dispensedByEmployeeId: string
+  status: string
+  note: string | null
+  reversed: boolean
+  reversal: {
+    id: string
+    quantityReversed: string
+    reversedAt: string
+  } | null
+  dispensedBy: {
+    id: string
+    employeeNumber: string
+    firstName: string
+    lastName: string
+    employmentStatus: string
+  }
+}
+
 export type PrescriptionItemDto = {
   id: string
   medicineId: string
@@ -46,6 +86,8 @@ export type PrescriptionItemDto = {
   duration: string
   instructions: string | null
   quantityPrescribed: string
+  quantityDispensed: string
+  quantityRemaining: string
   unit: string
   createdAt: string
   updatedAt: string
@@ -58,7 +100,9 @@ export type PrescriptionItemDto = {
     strength: string | null
     inventoryUnit: string
     status: string
+    currency: string
   }
+  dispenseRecords: PrescriptionDispenseDto[]
 }
 
 export type PrescriptionListDto = {
@@ -136,7 +180,15 @@ export function toPrescriptionDetailDto(
 ): PrescriptionDetailDto {
   return {
     ...commonFields(prescription),
-    items: prescription.items.map((item) => ({
+    items: prescription.items.map((item) => {
+      const effective = item.dispenseRecords
+        .filter((record) => !record.reversal)
+        .reduce(
+          (sum, record) => sum.add(record.quantityDispensed),
+          toDecimal(0),
+        )
+      const remaining = remainingQuantity(item.quantityPrescribed, effective)
+      return {
       id: item.id,
       medicineId: item.medicineId,
       dosage: item.dosage,
@@ -144,7 +196,9 @@ export function toPrescriptionDetailDto(
       frequency: item.frequency,
       duration: item.duration,
       instructions: item.instructions,
-      quantityPrescribed: item.quantityPrescribed.toString(),
+      quantityPrescribed: decimalString(item.quantityPrescribed),
+      quantityDispensed: decimalString(effective),
+      quantityRemaining: decimalString(remaining),
       unit: item.unit,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
@@ -157,7 +211,33 @@ export function toPrescriptionDetailDto(
         strength: item.medicine.strength,
         inventoryUnit: item.medicine.inventoryUnit,
         status: item.medicine.status,
+        currency: item.medicine.currency,
       },
-    })),
+      dispenseRecords: item.dispenseRecords.map((record) => ({
+        id: record.id,
+        quantityDispensed: decimalString(record.quantityDispensed),
+        unit: record.unit,
+        dispensedAt: record.dispensedAt.toISOString(),
+        dispensedByEmployeeId: record.dispensedByEmployeeId,
+        status: record.status,
+        note: record.note,
+        reversed: Boolean(record.reversal),
+        reversal: record.reversal
+          ? {
+              id: record.reversal.id,
+              quantityReversed: decimalString(record.reversal.quantityReversed),
+              reversedAt: record.reversal.reversedAt.toISOString(),
+            }
+          : null,
+        dispensedBy: {
+          id: record.dispensedBy.id,
+          employeeNumber: record.dispensedBy.employeeNumber,
+          firstName: record.dispensedBy.firstName,
+          lastName: record.dispensedBy.lastName,
+          employmentStatus: record.dispensedBy.employmentStatus,
+        },
+      })),
+    }
+    }),
   }
 }

@@ -1,9 +1,9 @@
 # System Architecture
 
 Status: Approved design; authentication, authorization, Patient Management,
-organization/staff/doctor/schedule management, Appointment Management, and
-Medical Records/Prescriptions are implemented; remaining business modules remain
-planned
+organization/staff/doctor/schedule management, Appointment Management,
+Medical Records/Prescriptions, Laboratory Management, and Pharmacy Management
+are implemented; remaining business modules remain planned
 
 ## Implemented core infrastructure
 
@@ -109,7 +109,8 @@ Key rules:
 - `VITE_API_URL` provides the API location.
 - Server data uses the central API client and TanStack Query. One application
   `QueryClient` owns list/detail caching for patients, organization records,
-  appointments, medical records, prescriptions, and medicines; mutations invalidate the
+  appointments, medical records, prescriptions, medicines, laboratory, and
+  pharmacy inventory/movements; mutations invalidate the
   narrow key families and authentication
   teardown clears user-scoped server state.
 - The access token remains in memory.

@@ -6,8 +6,10 @@ import { validate } from '../../middleware/validate.js'
 import {
   cancelPrescriptionController,
   createPrescriptionController,
+  dispensePrescriptionItemController,
   getPrescriptionController,
   listPrescriptionsController,
+  reverseDispenseController,
 } from './prescription.controller.js'
 import {
   cancelPrescriptionBodySchema,
@@ -15,6 +17,12 @@ import {
   listPrescriptionsQuerySchema,
   prescriptionIdParamsSchema,
 } from './prescription.schemas.js'
+import {
+  dispenseItemBodySchema,
+  prescriptionDispenseParamsSchema,
+  prescriptionItemParamsSchema,
+  reverseDispenseBodySchema,
+} from '../pharmacy/pharmacy.schemas.js'
 
 export const prescriptionRouter = Router()
 
@@ -46,4 +54,22 @@ prescriptionRouter.post(
     body: cancelPrescriptionBodySchema,
   }),
   cancelPrescriptionController,
+)
+prescriptionRouter.post(
+  '/:id/items/:itemId/dispense',
+  requirePermission(PERMISSIONS.prescriptionDispense),
+  validate({
+    params: prescriptionItemParamsSchema,
+    body: dispenseItemBodySchema,
+  }),
+  dispensePrescriptionItemController,
+)
+prescriptionRouter.post(
+  '/:id/dispenses/:dispenseId/reverse',
+  requirePermission(PERMISSIONS.prescriptionReverse),
+  validate({
+    params: prescriptionDispenseParamsSchema,
+    body: reverseDispenseBodySchema,
+  }),
+  reverseDispenseController,
 )

@@ -35,6 +35,17 @@ const environmentSchema = z
     .default('hms_refresh'),
   AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
   TRUST_PROXY: z.enum(['true', 'false']).default('false'),
+  HOSPITAL_TIMEZONE: z
+    .string()
+    .min(1)
+    .refine((value) => {
+      try {
+        Intl.DateTimeFormat('en-US', { timeZone: value })
+        return true
+      } catch {
+        return false
+      }
+    }, 'must be a valid IANA time zone'),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'test' && !value.TEST_DATABASE_URL) {
@@ -69,6 +80,9 @@ export type AppConfig = {
     cookieName: string
     cookieDomain: string | null
     trustProxy: boolean
+  }
+  hospital: {
+    timezone: string
   }
 }
 
@@ -124,6 +138,9 @@ export function loadEnvironment(
       cookieName: result.data.AUTH_COOKIE_NAME,
       cookieDomain: result.data.AUTH_COOKIE_DOMAIN ?? null,
       trustProxy: result.data.TRUST_PROXY === 'true',
+    },
+    hospital: {
+      timezone: result.data.HOSPITAL_TIMEZONE,
     },
   }
 }
