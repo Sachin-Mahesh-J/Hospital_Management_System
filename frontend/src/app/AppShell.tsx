@@ -50,6 +50,11 @@ const navigation = [
     permission: 'prescription.read',
   },
   {
+    label: 'Laboratory',
+    path: '/laboratory',
+    permission: 'lab_request.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

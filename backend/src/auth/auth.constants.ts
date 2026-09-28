@@ -41,4 +41,9 @@ export const PERMISSIONS = {
   prescriptionCreate: 'prescription.create',
   prescriptionCancel: 'prescription.cancel',
   medicineRead: 'medicine.read',
+  labTestRead: 'lab_test.read',
+  labRequestRead: 'lab_request.read',
+  labRequestCreate: 'lab_request.create',
+  labSampleCollect: 'lab_sample.collect',
+  labResultEnter: 'lab_result.enter',
 } as const

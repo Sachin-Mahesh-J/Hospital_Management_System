@@ -1046,8 +1046,10 @@ application workflow or production use:
   and cancellation policy.
 - Admission cancellation policy and discharge-content requirements.
 - Clinical content templates, author/sign-off permissions, and nurse write authority.
-- Laboratory catalog governance, structured numeric/qualitative result validation,
-  reference-range policy, and finalizer eligibility.
+  Amendment storage is resolved by D-014. Laboratory application policy is D-023.
+- Laboratory catalog write APIs, structured numeric result validation, reference-range
+  engines, and result finalization/correction remain deferred; D-023 left those
+  columns unused.
 - Patient document categories, size/MIME allowlists, retention, and malware scanning.
 - Leave types, allowances, overlap rules, attendance capture method, and corrections.
 - Pharmacy batch receiving/expiry acceptance, adjustment authorization, threshold

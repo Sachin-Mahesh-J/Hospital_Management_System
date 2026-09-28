@@ -150,7 +150,12 @@ async function createAppointment(
 
 async function createLabRequestItem(
   transaction: Prisma.TransactionClient,
-): Promise<{ employeeId: string; itemId: string }> {
+): Promise<{
+    employeeId: string
+    itemId: string
+    requestId: string
+    testDefinitionId: string
+  }> {
   const userId = await createUser(transaction)
   const patientId = await createPatient(transaction)
   const { doctorId, employeeId } = await createDoctor(transaction)
@@ -173,7 +178,12 @@ async function createLabRequestItem(
     RETURNING "id"
   `
 
-  return { employeeId, itemId: items[0]!.id }
+  return {
+    employeeId,
+    itemId: items[0]!.id,
+    requestId: requests[0]!.id,
+    testDefinitionId: definitions[0]!.id,
+  }
 }
 
 afterAll(async () => {
@@ -394,6 +404,44 @@ describe('PostgreSQL physical schema', () => {
         `,
       )
       expectPostgresViolation(error, '23514', 'ck_lab_results_not_self')
+    })
+  })
+
+  it('allows the same laboratory test twice on one request', async () => {
+    await withRollback(async (transaction) => {
+      const { requestId, testDefinitionId } = await createLabRequestItem(transaction)
+      await transaction.$executeRaw`
+        INSERT INTO "lab_request_items" ("lab_request_id", "test_definition_id")
+        VALUES (${requestId}::uuid, ${testDefinitionId}::uuid)
+      `
+    })
+  })
+
+  it('enforces sample collection pairing', async () => {
+    await withRollback(async (transaction) => {
+      const { itemId } = await createLabRequestItem(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          UPDATE "lab_request_items"
+          SET "sample_collected_at" = now()
+          WHERE "id" = ${itemId}::uuid
+        `,
+      )
+      expectPostgresViolation(error, '23514', 'ck_lab_request_items_collection')
+    })
+  })
+
+  it('rejects unknown laboratory item statuses', async () => {
+    await withRollback(async (transaction) => {
+      const { itemId } = await createLabRequestItem(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          UPDATE "lab_request_items"
+          SET "status" = 'processing'
+          WHERE "id" = ${itemId}::uuid
+        `,
+      )
+      expectPostgresViolation(error, '23514', 'ck_lab_request_items_status')
     })
   })
 

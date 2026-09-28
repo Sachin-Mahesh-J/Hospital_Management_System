@@ -32,6 +32,10 @@ import { PatientRegisterPage } from '../features/patients/PatientRegisterPage'
 import { PrescriptionCreatePage } from '../features/prescriptions/PrescriptionCreatePage'
 import { PrescriptionDetailPage } from '../features/prescriptions/PrescriptionDetailPage'
 import { PrescriptionListPage } from '../features/prescriptions/PrescriptionListPage'
+import { LaboratoryCreatePage } from '../features/laboratory/LaboratoryCreatePage'
+import { LaboratoryDetailPage } from '../features/laboratory/LaboratoryDetailPage'
+import { LaboratoryListPage } from '../features/laboratory/LaboratoryListPage'
+import { LaboratoryReportPage } from '../features/laboratory/LaboratoryReportPage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
@@ -219,6 +223,25 @@ export const appRoutes: RouteObject[] = [
                     children: [
                       { index: true, element: <PrescriptionListPage /> },
                       { path: ':prescriptionId', element: <PrescriptionDetailPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'laboratory',
+                children: [
+                  {
+                    element: <PermissionRoute permission="lab_request.read" />,
+                    children: [
+                      { index: true, element: <LaboratoryListPage /> },
+                      { path: ':requestId', element: <LaboratoryDetailPage /> },
+                      { path: ':requestId/report', element: <LaboratoryReportPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="lab_request.create" />,
+                    children: [
+                      { path: 'new', element: <LaboratoryCreatePage /> },
                     ],
                   },
                 ],

@@ -5,9 +5,9 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 9 adds medical records, diagnoses, treatments, reports, and
-prescriptions on top of Appointment Management. Laboratory, pharmacy inventory,
-dispensing, billing, and admissions management remain deferred.
+Milestone 10 implemented laboratory requests, sample collection, result entry,
+and on-screen reports under D-023. Pharmacy inventory, dispensing, billing, and
+admissions management remain deferred.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -175,7 +175,9 @@ APIs are documented in `docs/development/organization-management.md`. Appointmen
 booking, cancellation, rescheduling, and status transitions are documented in
 `docs/development/appointment-management.md`. Medical records, clinical children,
 prescriptions, and the read-only medicine catalog are documented in
-`docs/development/medical-records.md`.
+`docs/development/medical-records.md`. Laboratory requests, sample collection,
+result entry, and printable reports are documented in
+`docs/development/laboratory-management.md`.
 
 ## Approved stack
 

@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.6.0',
+    version: '0.7.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -856,6 +856,128 @@ export const openApiDocument = {
           '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '403': { description: 'medicine.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/lab/tests': {
+      get: {
+        summary: 'List active laboratory tests',
+        description: 'Requires lab_test.read. Returns only active catalog rows for request creation. Catalog write is not implemented.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['code', 'name'], default: 'name' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated active laboratory tests.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabTestListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_test.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/lab/requests': {
+      get: {
+        summary: 'List laboratory requests',
+        description: 'Requires lab_request.read. Visibility is permission-wide. Nested test names on a request are part of this permission.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'requestedByDoctorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/LabRequestStatus' } },
+          { name: 'requestedAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'requestedAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['requestedAt', 'createdAt', 'status'], default: 'requestedAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated laboratory requests.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabRequestListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_request.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Create a laboratory request',
+        description: 'Requires lab_request.create. The requesting doctor is derived from the authenticated user. Duplicate tests on one request are allowed. Inactive tests are rejected. Client-supplied actor IDs and status are rejected.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateLabRequestRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Laboratory request created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabRequestDetailResponse' } } } },
+          '400': { description: 'Invalid request body.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_request.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient, medical record, or laboratory test was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Doctor identity mapping missing/inactive, inactive test selected, or medical-record patient mismatch.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/lab/requests/{id}': {
+      get: {
+        summary: 'Get a laboratory request',
+        description: 'Requires lab_request.read. Includes items, collection metadata, and entered results used by the on-screen report.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Laboratory request detail.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabRequestDetailResponse' } } } },
+          '400': { description: 'Invalid laboratory request ID.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_request.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Laboratory request not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/lab/requests/{id}/items/{itemId}/sample': {
+      post: {
+        summary: 'Record sample collection for a request item',
+        description: 'Requires lab_sample.collect. Allowed only from requested. Collector identity is derived from the authenticated employee. The request body must be an empty object.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'itemId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CollectLabSampleRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Sample collection recorded and parent status recomputed.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabRequestDetailResponse' } } } },
+          '400': { description: 'Invalid identifiers or unexpected body fields.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_sample.collect is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Laboratory request or item not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Item is not in requested status, or employee identity is missing/inactive.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/lab/requests/{id}/items/{itemId}/results': {
+      post: {
+        summary: 'Enter a laboratory result for a collected item',
+        description: 'Requires lab_result.enter. Allowed only from sample_collected. Enterer identity is derived from the authenticated employee. Results are not edited, finalized, or superseded in this milestone.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'itemId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/EnterLabResultRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Result entered as version 1 and parent status recomputed.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LabRequestDetailResponse' } } } },
+          '400': { description: 'Invalid result data or unexpected body fields.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'lab_result.enter is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Laboratory request or item not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Item is not collected, a result already exists, or employee identity is missing/inactive.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -1723,6 +1845,167 @@ export const openApiDocument = {
         required: ['data', 'meta'],
         properties: {
           data: { type: 'array', items: { $ref: '#/components/schemas/MedicineCatalogItem' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      LabRequestStatus: {
+        type: 'string',
+        enum: ['requested', 'sample_collected', 'in_progress', 'completed', 'cancelled'],
+      },
+      LabTestCatalogItem: {
+        type: 'object',
+        required: ['id', 'code', 'name', 'status'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          code: { type: 'string' },
+          name: { type: 'string' },
+          status: { type: 'string', enum: ['active', 'inactive'] },
+        },
+      },
+      LabTestListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/LabTestCatalogItem' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      CreateLabRequestItemInput: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['testDefinitionId'],
+        properties: {
+          testDefinitionId: { type: 'string', format: 'uuid' },
+        },
+      },
+      CreateLabRequestRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['patientId', 'items'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid' },
+          medicalRecordId: { type: ['string', 'null'], format: 'uuid' },
+          clinicalNote: { type: ['string', 'null'], maxLength: 2000 },
+          items: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 50,
+            items: { $ref: '#/components/schemas/CreateLabRequestItemInput' },
+          },
+        },
+      },
+      CollectLabSampleRequest: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+      },
+      EnterLabResultRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['resultValue'],
+        properties: {
+          resultValue: { type: 'string', minLength: 1, maxLength: 10000 },
+          resultUnit: { type: ['string', 'null'], maxLength: 50 },
+          referenceRangeSnapshot: { type: ['string', 'null'], maxLength: 2000 },
+          resultNote: { type: ['string', 'null'], maxLength: 2000 },
+        },
+      },
+      LabEmployeeSummary: {
+        type: 'object',
+        required: ['id', 'employeeNumber', 'firstName', 'lastName', 'employmentStatus'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          employeeNumber: { type: 'string' },
+          firstName: { type: 'string' },
+          lastName: { type: 'string' },
+          employmentStatus: { type: 'string' },
+        },
+      },
+      LabRequestListItem: {
+        type: 'object',
+        required: ['id', 'patientId', 'requestedByDoctorId', 'medicalRecordId', 'requestedAt', 'status', 'clinicalNote', 'createdAt', 'updatedAt', 'patient', 'requestedBy', 'itemCount'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          patientId: { type: 'string', format: 'uuid' },
+          requestedByDoctorId: { type: 'string', format: 'uuid' },
+          medicalRecordId: { type: ['string', 'null'], format: 'uuid' },
+          requestedAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/LabRequestStatus' },
+          clinicalNote: { type: ['string', 'null'] },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          itemCount: { type: 'integer' },
+          patient: { $ref: '#/components/schemas/MedicalRecordListItem/properties/patient' },
+          requestedBy: {
+            type: 'object',
+            required: ['id', 'licenseNumber', 'specialization', 'status', 'employee'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              licenseNumber: { type: 'string' },
+              specialization: { type: 'string' },
+              status: { $ref: '#/components/schemas/DoctorStatus' },
+              employee: { $ref: '#/components/schemas/LabEmployeeSummary' },
+            },
+          },
+        },
+      },
+      LabRequestDetail: {
+        allOf: [
+          { $ref: '#/components/schemas/LabRequestListItem' },
+          {
+            type: 'object',
+            required: ['items'],
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'testDefinitionId', 'status', 'sampleCollectedAt', 'sampleCollectedByEmployeeId', 'createdAt', 'updatedAt', 'testDefinition', 'sampleCollectedBy', 'results'],
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    testDefinitionId: { type: 'string', format: 'uuid' },
+                    status: { $ref: '#/components/schemas/LabRequestStatus' },
+                    sampleCollectedAt: { type: ['string', 'null'], format: 'date-time' },
+                    sampleCollectedByEmployeeId: { type: ['string', 'null'], format: 'uuid' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                    testDefinition: { $ref: '#/components/schemas/LabTestCatalogItem' },
+                    sampleCollectedBy: { type: ['object', 'null'], allOf: [{ $ref: '#/components/schemas/LabEmployeeSummary' }] },
+                    results: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        required: ['id', 'versionNumber', 'resultValue', 'resultUnit', 'referenceRangeSnapshot', 'resultNote', 'enteredAt', 'enteredByEmployeeId', 'enteredBy'],
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          versionNumber: { type: 'integer' },
+                          resultValue: { type: 'string' },
+                          resultUnit: { type: ['string', 'null'] },
+                          referenceRangeSnapshot: { type: ['string', 'null'] },
+                          resultNote: { type: ['string', 'null'] },
+                          enteredAt: { type: 'string', format: 'date-time' },
+                          enteredByEmployeeId: { type: 'string', format: 'uuid' },
+                          enteredBy: { $ref: '#/components/schemas/LabEmployeeSummary' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      LabRequestDetailResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/LabRequestDetail' } },
+      },
+      LabRequestListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/LabRequestListItem' } },
           meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
         },
       },

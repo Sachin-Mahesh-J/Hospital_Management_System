@@ -62,6 +62,11 @@ engineering policy for this milestone, not a claim from the source PDF.
   `docs/development/medical-records.md`. Clinical writes derive employee/doctor
   identity from the database; they do not trust client-supplied author IDs and do
   not put employee or doctor identity into the JWT.
+- Laboratory Management currently authorizes `lab_test.read`, `lab_request.read`,
+  `lab_request.create`, `lab_sample.collect`, and `lab_result.enter` as documented
+  in `docs/development/laboratory-management.md`. Requesting-doctor, collector,
+  and result-enterer identity is derived from the database. `patient.read` is not
+  laboratory access. Administrator laboratory access is read-only.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

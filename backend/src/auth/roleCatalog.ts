@@ -47,6 +47,11 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.prescriptionCreate, 'Create prescriptions from finalized medical records.'],
   [PERMISSIONS.prescriptionCancel, 'Cancel active prescriptions.'],
   [PERMISSIONS.medicineRead, 'Read the active medicine catalog for prescribing.'],
+  [PERMISSIONS.labTestRead, 'Read the active laboratory test catalog for requesting tests.'],
+  [PERMISSIONS.labRequestRead, 'Read laboratory requests, nested results, and assembled reports.'],
+  [PERMISSIONS.labRequestCreate, 'Create laboratory requests from a linked doctor profile.'],
+  [PERMISSIONS.labSampleCollect, 'Record sample collection for a laboratory request item.'],
+  [PERMISSIONS.labResultEnter, 'Enter a laboratory result for a collected request item.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -79,6 +84,7 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.appointmentStatusUpdate,
     PERMISSIONS.medicalRecordRead,
     PERMISSIONS.prescriptionRead,
+    PERMISSIONS.labRequestRead,
   ],
   receptionist: [
     PERMISSIONS.identitySelfRead,
@@ -111,6 +117,9 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.prescriptionCreate,
     PERMISSIONS.prescriptionCancel,
     PERMISSIONS.medicineRead,
+    PERMISSIONS.labTestRead,
+    PERMISSIONS.labRequestRead,
+    PERMISSIONS.labRequestCreate,
   ],
   nurse: [
     PERMISSIONS.identitySelfRead,
@@ -118,10 +127,14 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.patientRead,
     PERMISSIONS.medicalRecordRead,
     PERMISSIONS.prescriptionRead,
+    PERMISSIONS.labRequestRead,
   ],
   laboratory_staff: [
     PERMISSIONS.identitySelfRead,
     PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.labRequestRead,
+    PERMISSIONS.labSampleCollect,
+    PERMISSIONS.labResultEnter,
   ],
   pharmacist: [
     PERMISSIONS.identitySelfRead,

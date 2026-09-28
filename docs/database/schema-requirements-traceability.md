@@ -157,6 +157,6 @@ target scope. This does not claim that deployment has occurred.
 - Document category/type/size/retention rules.
 - Legal jurisdiction, privacy, consent, retention, and data-residency obligations.
 - Measurable performance, availability, RPO, and RTO targets.
-- Detailed schedule, leave, laboratory, remaining pharmacy, tax, discount,
-  payment-method, and receipt policies listed in the physical design. Full dispensing
-  reversal is resolved by D-020.
+- Detailed schedule, leave, remaining pharmacy, tax, discount, payment-method,
+  and receipt policies listed in the physical design. Laboratory application
+  policy for Milestone 10 is D-023. Full dispensing reversal is resolved by D-020.
