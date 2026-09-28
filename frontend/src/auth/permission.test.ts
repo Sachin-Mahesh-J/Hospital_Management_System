@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CurrentUser } from '../api/auth'
-import { hasPermission } from './permission'
+import { hasAnyPermission, hasPermission } from './permission'
 
 const user: CurrentUser = {
   id: 'user-1',
@@ -14,5 +14,8 @@ describe('permission-aware UI helper', () => {
     expect(hasPermission(user, 'identity.self.read')).toBe(true)
     expect(hasPermission(user, 'patient.read')).toBe(false)
     expect(hasPermission(null, 'identity.self.read')).toBe(false)
+    expect(hasAnyPermission(user, ['patient.read', 'identity.self.read'])).toBe(true)
+    expect(hasAnyPermission(user, ['patient.read', 'report.revenue.read'])).toBe(false)
+    expect(hasAnyPermission(null, ['identity.self.read'])).toBe(false)
   })
 })

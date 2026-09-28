@@ -2,6 +2,10 @@ import { Alert, Button } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { getHealth, type HealthResponse } from '../api/health'
+import { useAuth } from '../auth/authContext'
+import { hasAnyPermission } from '../auth/permission'
+import { DashboardMetrics } from '../features/reports/DashboardMetrics'
+import { REPORT_PERMISSIONS } from '../features/reports/permissions'
 import { Page } from '../shared/components/Page'
 import {
   ErrorState,
@@ -16,6 +20,8 @@ function errorMessage(error: unknown): string {
 }
 
 export function HomePage() {
+  const { user } = useAuth()
+  const showDashboard = hasAnyPermission(user, REPORT_PERMISSIONS)
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -69,9 +75,10 @@ export function HomePage() {
           Check API
         </Button>
       }
-      description="Core application infrastructure is ready for future HMS modules."
-      title="Hospital Management System"
+      description="Authorized operational metrics use hospital-local dates. Metrics you cannot access are not shown."
+      title="Dashboard"
     >
+      <DashboardMetrics enabled={showDashboard} />
       {isLoading && <LoadingState label="Checking API status" />}
       {!isLoading && error && (
         <ErrorState message={error} onRetry={() => void checkApi()} />

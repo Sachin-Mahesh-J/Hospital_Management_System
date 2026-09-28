@@ -31,6 +31,10 @@ import {
   invoiceRouter,
   paymentRouter,
 } from './modules/billing/billing.routes.js'
+import {
+  dashboardRouter,
+  reportRouter,
+} from './modules/reports/report.routes.js'
 
 export function createApp() {
   const app = express()
@@ -87,6 +91,8 @@ export function createApp() {
   app.use('/api/v1/billing', billingLookupRouter)
   app.use('/api/v1/invoices', invoiceRouter)
   app.use('/api/v1/payments', paymentRouter)
+  app.use('/api/v1/reports', reportRouter)
+  app.use('/api/v1/dashboard', dashboardRouter)
   app.get('/api/v1/openapi.json', (_request, response) => {
     response.json(openApiDocument)
   })

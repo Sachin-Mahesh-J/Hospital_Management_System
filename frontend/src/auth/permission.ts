@@ -6,3 +6,10 @@ export function hasPermission(
 ): boolean {
   return user?.permissions.includes(permission) ?? false
 }
+
+export function hasAnyPermission(
+  user: CurrentUser | null,
+  permissions: readonly string[],
+): boolean {
+  return permissions.some((permission) => hasPermission(user, permission))
+}

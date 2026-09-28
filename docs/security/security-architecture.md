@@ -87,6 +87,12 @@ engineering policy for this milestone, not a claim from the source PDF.
   Doctor receive no admission permissions. Nurse can read. Receptionist can
   read and create. Update, discharge, and cancel are ungranted to current
   roles. Resource-level “relevant admission” scoping remains deferred.
+- Reports and Dashboard currently authorize dedicated `report.*` permissions as
+  documented in `docs/development/reports-and-dashboard.md`. Operational
+  `patient.read`, `appointment.read`, `invoice.read`, `inventory.read`, and
+  `lab_request.read` are not report access. Accountant revenue-report access
+  does not include `patient.read`. Dashboard metrics are omitted unless the
+  matching report permission is granted.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

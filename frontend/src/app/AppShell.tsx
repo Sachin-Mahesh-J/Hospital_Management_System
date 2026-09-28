@@ -11,6 +11,8 @@ import { useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { Can } from '../auth/Can'
 import { useAuth } from '../auth/authContext'
+import { hasAnyPermission } from '../auth/permission'
+import { REPORT_PERMISSIONS } from '../features/reports/permissions'
 
 const navigation = [
   { label: 'Home', path: '/', permission: null },
@@ -126,6 +128,11 @@ export function AppShell() {
                     </Button>
                   )
             ))}
+            {hasAnyPermission(user, REPORT_PERMISSIONS) && (
+              <Button color="inherit" component={Link} to="/reports">
+                Reports
+              </Button>
+            )}
           </Stack>
           <Stack
             direction="row"

@@ -405,6 +405,70 @@ Admission billing remains deferred under D-025.
 
 Full context: `docs/development/inpatient-outpatient-management.md`.
 
+### D-027 — Reports and dashboard application policy (Milestone 14)
+
+```text
+APPROVED
+```
+
+M14 implements read-only patient, appointment, revenue, pharmacy, laboratory, and
+staff reports plus the named dashboard metrics as query models over existing
+operational tables. Implementation is documented in
+`docs/development/reports-and-dashboard.md`. No reporting tables, materialized
+views, CSV/PDF generation, attendance/leave reports, or extra KPIs are in scope.
+
+#### Selected options
+
+1. **Report types.** All six named reports are in this slice. Staff reports use
+   existing employee, department, and doctor master data only. Attendance and
+   leave are excluded because those workflows are not implemented.
+2. **Permissions.** Dedicated codes, not operational reuse:
+   `report.patient.read`, `report.appointment.read`, `report.revenue.read`,
+   `report.pharmacy.read`, `report.laboratory.read`, `report.staff.read`.
+3. **Role grants.** Administrator receives all six. Accountant receives only
+   revenue. Laboratory Staff receives only laboratory. Pharmacist receives only
+   pharmacy. Doctor, Nurse, and Receptionist receive none.
+4. **Columns.** Minimum necessary administrative fields already present on the
+   source models. Reports omit passwords, sessions, tokens, unnecessary contact
+   details, clinical notes, prescription content, laboratory result values, and
+   raw Prisma internals.
+5. **Filters and dates.** Date-based reports require hospital-local `from`/`to`
+   calendar dates, converted to half-open UTC `[start, end)` using D-007.
+   Inclusive span is at most 366 days. Inverted ranges are rejected. Pagination
+   reuses the existing page size maximum of 100.
+6. **Output.** On-screen views and browser print only. No CSV, generated PDF,
+   stored report files, email, or SMS.
+7. **Dashboard metrics.** Exactly: total patients, today’s appointments, revenue
+   summary, laboratory requests, pharmacy alerts. Visibility follows the same
+   report permissions. Unauthorized metrics are omitted, not zeroed.
+8. **Revenue.** Effective recorded payments that are not reversal rows and that
+   belong to non-void invoices, in the configured hospital currency. Invoice
+   totals, drafts, unpaid issued invoices, reversed payments, and void-invoice
+   payments are excluded. Partial payments count only their effective amount.
+9. **Pharmacy alerts.** Near-expiry = unexpired batches with remaining stock
+   whose expiry date is within 30 hospital-local days. Low-stock = current M11
+   stock `<= medicines.low_stock_threshold`. Threshold `0` (schema default) is
+   treated as no meaningful threshold and is not classified as low-stock.
+   Expired remaining stock is counted separately on the pharmacy report and is
+   not near-expiry. No jobs or notifications.
+10. **Staff reports** exclude attendance and leave.
+11. **Query bounds.** Required date range for appointment, revenue, and
+    laboratory reports; pagination on all list reports; database-side
+    aggregation for summaries.
+
+#### Database
+
+No migration. Existing tables and indexes are used.
+
+#### Explicitly not in this decision
+
+- Admission billing (remains D-025)
+- Patient document upload
+- Attendance/leave application APIs (remain blocked on remaining D-019 items)
+- CSV/PDF export, stored reports, email/SMS reports
+- Advanced analytics, forecasting, AI
+- Audit-record viewing
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:

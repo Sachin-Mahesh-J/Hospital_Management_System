@@ -3,7 +3,7 @@ import {
   type RouteObject,
 } from 'react-router-dom'
 import { ProtectedRoute } from '../auth/ProtectedRoute'
-import { PermissionRoute } from '../auth/PermissionRoute'
+import { AnyPermissionRoute, PermissionRoute } from '../auth/PermissionRoute'
 import { AppointmentCreatePage } from '../features/appointments/AppointmentCreatePage'
 import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage'
 import { AppointmentEditPage } from '../features/appointments/AppointmentEditPage'
@@ -47,6 +47,14 @@ import { InvoiceCreatePage } from '../features/billing/InvoiceCreatePage'
 import { InvoiceDetailPage } from '../features/billing/InvoiceDetailPage'
 import { InvoiceListPage } from '../features/billing/InvoiceListPage'
 import { PaymentReceiptPage } from '../features/billing/PaymentReceiptPage'
+import { ReportsHomePage } from '../features/reports/ReportsHomePage'
+import { PatientReportPage } from '../features/reports/PatientReportPage'
+import { AppointmentReportPage } from '../features/reports/AppointmentReportPage'
+import { RevenueReportPage } from '../features/reports/RevenueReportPage'
+import { PharmacyReportPage } from '../features/reports/PharmacyReportPage'
+import { LaboratoryReportPage as LaboratoryAnalyticsReportPage } from '../features/reports/LaboratoryReportPage'
+import { StaffReportPage } from '../features/reports/StaffReportPage'
+import { REPORT_PERMISSIONS } from '../features/reports/permissions'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
@@ -325,6 +333,37 @@ export const appRoutes: RouteObject[] = [
                     children: [
                       { path: ':invoiceId/payments/:paymentId', element: <PaymentReceiptPage /> },
                     ],
+                  },
+                ],
+              },
+              {
+                path: 'reports',
+                element: <AnyPermissionRoute permissions={REPORT_PERMISSIONS} />,
+                children: [
+                  { index: true, element: <ReportsHomePage /> },
+                  {
+                    element: <PermissionRoute permission="report.patient.read" />,
+                    children: [{ path: 'patients', element: <PatientReportPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="report.appointment.read" />,
+                    children: [{ path: 'appointments', element: <AppointmentReportPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="report.revenue.read" />,
+                    children: [{ path: 'revenue', element: <RevenueReportPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="report.pharmacy.read" />,
+                    children: [{ path: 'pharmacy', element: <PharmacyReportPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="report.laboratory.read" />,
+                    children: [{ path: 'laboratory', element: <LaboratoryAnalyticsReportPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="report.staff.read" />,
+                    children: [{ path: 'staff', element: <StaffReportPage /> }],
                   },
                 ],
               },

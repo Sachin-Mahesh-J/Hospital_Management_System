@@ -65,4 +65,10 @@ export const PERMISSIONS = {
   admissionUpdate: 'admission.update',
   admissionDischarge: 'admission.discharge',
   admissionCancel: 'admission.cancel',
+  reportPatientRead: 'report.patient.read',
+  reportAppointmentRead: 'report.appointment.read',
+  reportRevenueRead: 'report.revenue.read',
+  reportPharmacyRead: 'report.pharmacy.read',
+  reportLaboratoryRead: 'report.laboratory.read',
+  reportStaffRead: 'report.staff.read',
 } as const

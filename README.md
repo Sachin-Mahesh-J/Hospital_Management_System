@@ -10,8 +10,15 @@ charges, payments, linked payment reversal, and printable receipts under D-025.
 Milestone 13 implemented minimal inpatient admission management under D-026. See
 `docs/development/inpatient-outpatient-management.md`.
 
-The primary requirements source remains `Hospital_system.pdf`. Approved planning and
-architecture documents are under `docs/`.
+Milestone 14 implemented read-only patient, appointment, revenue, pharmacy,
+laboratory, and staff reports plus the named dashboard metrics under D-027.
+See `docs/development/reports-and-dashboard.md`. CSV/PDF export, attendance
+and leave reports, and advanced analytics remain deferred.
+
+The primary requirements source remains `Hospital_system.pdf`. That file is not
+currently in the workspace; the approved baseline is
+`docs/requirements/requirements-analysis.md`. Approved planning and architecture
+documents are under `docs/`.
 
 ## Prerequisites
 
@@ -59,7 +66,7 @@ Backend:
 - `AUTH_COOKIE_DOMAIN` — optional cookie domain; normally omitted for a host-only
   cookie.
 - `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
-- `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry boundaries.
+- `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry, report, and dashboard boundaries.
 - `DEFAULT_CURRENCY` — ISO 4217 currency used for every invoice and payment.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret

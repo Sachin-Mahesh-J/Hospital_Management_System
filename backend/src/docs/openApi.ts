@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.10.0',
+    version: '0.11.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -1438,6 +1438,133 @@ export const openApiDocument = {
           '403': { description: 'payment.reverse is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '404': { description: 'Payment was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '409': { description: 'Payment already reversed, reversal of a reversal, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/patients': {
+      get: {
+        summary: 'Read the administrative patient report',
+        description: 'Requires report.patient.read. Returns minimum necessary administrative patient fields. Contact details, clinical notes, prescriptions, laboratory results, and authentication data are omitted.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/PatientStatus' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated patient report rows.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PatientReportResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.patient.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/appointments': {
+      get: {
+        summary: 'Read the appointment report',
+        description: 'Requires report.appointment.read. `from` and `to` are hospital-local calendar dates converted to a half-open UTC interval. The inclusive span cannot exceed 366 days. Inverted ranges are rejected.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/AppointmentStatus' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated appointment report rows.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentReportResponse' } } } },
+          '400': { description: 'Invalid query or date range.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.appointment.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/revenue': {
+      get: {
+        summary: 'Read the revenue report',
+        description: 'Requires report.revenue.read. Revenue is the sum of effective recorded payments that are not reversal rows and that belong to non-void invoices, using the configured hospital currency. Invoice totals are not revenue.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'method', in: 'query', schema: { type: 'string', enum: ['cash', 'card', 'bank_transfer'] } },
+        ],
+        responses: {
+          '200': { description: 'Paginated effective payments with a revenue summary.', content: { 'application/json': { schema: { $ref: '#/components/schemas/RevenueReportResponse' } } } },
+          '400': { description: 'Invalid query or date range.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.revenue.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/pharmacy': {
+      get: {
+        summary: 'Read the pharmacy report',
+        description: 'Requires report.pharmacy.read. Low-stock uses existing medicines.low_stock_threshold and M11 stock-movement totals. Near-expiry is unexpired batches with remaining stock whose expiry date is within 30 hospital-local days. Expired batches are counted separately and are not near-expiry.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'section', in: 'query', schema: { type: 'string', enum: ['low_stock', 'near_expiry'], default: 'low_stock' } },
+        ],
+        responses: {
+          '200': { description: 'Pharmacy alert summary and the selected paginated section.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PharmacyReportResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.pharmacy.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/laboratory': {
+      get: {
+        summary: 'Read the laboratory report',
+        description: 'Requires report.laboratory.read. Uses existing laboratory requests and item statuses. Result values and clinical notes are omitted. `from`/`to` filter requestedAt using hospital-local day bounds.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/LabRequestStatus' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated laboratory report rows.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LaboratoryReportResponse' } } } },
+          '400': { description: 'Invalid query or date range.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.laboratory.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/reports/staff': {
+      get: {
+        summary: 'Read the staff report',
+        description: 'Requires report.staff.read. Covers existing employees, departments, and doctor profiles. Attendance and leave are not included. Passwords, sessions, and contact details are omitted.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'employmentStatus', in: 'query', schema: { $ref: '#/components/schemas/EmploymentStatus' } },
+          { name: 'departmentId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated staff report rows.', content: { 'application/json': { schema: { $ref: '#/components/schemas/StaffReportResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'report.staff.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/dashboard': {
+      get: {
+        summary: 'Read authorized dashboard metrics',
+        description: 'Requires authentication. Returns only D-027 metrics the caller is permitted to see: total patients, today’s appointments, revenue summary, laboratory requests, and pharmacy alerts. Unauthorized metrics are omitted, not zeroed.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Dashboard metrics authorized for the current user.', content: { 'application/json': { schema: { $ref: '#/components/schemas/DashboardResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -3000,6 +3127,380 @@ export const openApiDocument = {
                 billed: { type: 'boolean' },
                 billedInvoiceId: { type: ['string', 'null'], format: 'uuid' },
                 billedInvoiceNumber: { type: ['string', 'null'] },
+              },
+            },
+          },
+        },
+      },
+      ReportPagination: {
+        type: 'object',
+        required: ['page', 'pageSize', 'totalItems', 'totalPages'],
+        properties: {
+          page: { type: 'integer' },
+          pageSize: { type: 'integer' },
+          totalItems: { type: 'integer' },
+          totalPages: { type: 'integer' },
+        },
+      },
+      PatientReportRow: {
+        type: 'object',
+        required: ['id', 'patientNumber', 'firstName', 'lastName', 'dateOfBirth', 'dateOfBirthPrecision', 'sexAtRegistration', 'status', 'createdAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          patientNumber: { type: 'string' },
+          firstName: { type: 'string' },
+          lastName: { type: 'string' },
+          dateOfBirth: { type: ['string', 'null'], format: 'date' },
+          dateOfBirthPrecision: { type: 'string' },
+          sexAtRegistration: { type: ['string', 'null'] },
+          status: { $ref: '#/components/schemas/PatientStatus' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      PatientReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/PatientReportRow' } },
+          meta: {
+            type: 'object',
+            required: ['pagination'],
+            properties: { pagination: { $ref: '#/components/schemas/ReportPagination' } },
+          },
+        },
+      },
+      AppointmentReportRow: {
+        type: 'object',
+        required: ['id', 'startsAt', 'endsAt', 'status', 'patient', 'doctor'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          startsAt: { type: 'string', format: 'date-time' },
+          endsAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/AppointmentStatus' },
+          patient: {
+            type: 'object',
+            required: ['id', 'patientNumber', 'firstName', 'lastName', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              patientNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+          doctor: {
+            type: 'object',
+            required: ['id', 'specialization', 'status', 'employee', 'department'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              specialization: { type: 'string' },
+              status: { type: 'string' },
+              employee: {
+                type: 'object',
+                required: ['employeeNumber', 'firstName', 'lastName'],
+                properties: {
+                  employeeNumber: { type: 'string' },
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                },
+              },
+              department: {
+                type: 'object',
+                required: ['id', 'code', 'name'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  code: { type: 'string' },
+                  name: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      AppointmentReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/AppointmentReportRow' } },
+          meta: {
+            type: 'object',
+            required: ['pagination'],
+            properties: { pagination: { $ref: '#/components/schemas/ReportPagination' } },
+          },
+        },
+      },
+      RevenueSummary: {
+        type: 'object',
+        required: ['currency', 'paymentCount', 'totalAmount', 'byMethod'],
+        properties: {
+          currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+          paymentCount: { type: 'integer' },
+          totalAmount: { type: 'string' },
+          byMethod: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['method', 'paymentCount', 'totalAmount'],
+              properties: {
+                method: { type: 'string' },
+                paymentCount: { type: 'integer' },
+                totalAmount: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      RevenueReportRow: {
+        type: 'object',
+        required: ['id', 'paymentNumber', 'invoiceNumber', 'patientNumber', 'amount', 'currency', 'method', 'paidAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          paymentNumber: { type: 'string' },
+          invoiceNumber: { type: 'string' },
+          patientNumber: { type: 'string' },
+          amount: { type: 'string' },
+          currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+          method: { type: 'string' },
+          paidAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      RevenueReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/RevenueReportRow' } },
+          meta: {
+            type: 'object',
+            required: ['pagination', 'summary'],
+            properties: {
+              pagination: { $ref: '#/components/schemas/ReportPagination' },
+              summary: { $ref: '#/components/schemas/RevenueSummary' },
+            },
+          },
+        },
+      },
+      PharmacyAlertSummary: {
+        type: 'object',
+        required: ['lowStockMedicineCount', 'nearExpiryBatchCount', 'expiredBatchCount'],
+        properties: {
+          lowStockMedicineCount: { type: 'integer' },
+          nearExpiryBatchCount: { type: 'integer' },
+          expiredBatchCount: { type: 'integer' },
+        },
+      },
+      LowStockMedicineRow: {
+        type: 'object',
+        required: ['id', 'code', 'genericName', 'brandName', 'dosageForm', 'strength', 'inventoryUnit', 'status', 'currentStock', 'lowStockThreshold'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          code: { type: 'string' },
+          genericName: { type: 'string' },
+          brandName: { type: ['string', 'null'] },
+          dosageForm: { type: 'string' },
+          strength: { type: ['string', 'null'] },
+          inventoryUnit: { type: 'string' },
+          status: { type: 'string' },
+          currentStock: { type: 'string' },
+          lowStockThreshold: { type: 'string' },
+        },
+      },
+      NearExpiryBatchRow: {
+        type: 'object',
+        required: ['id', 'batchNumber', 'expiryDate', 'availableQuantity', 'status', 'medicine'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          batchNumber: { type: 'string' },
+          expiryDate: { type: 'string', format: 'date' },
+          availableQuantity: { type: 'string' },
+          status: { type: 'string' },
+          medicine: {
+            type: 'object',
+            required: ['id', 'code', 'genericName', 'brandName', 'inventoryUnit', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              code: { type: 'string' },
+              genericName: { type: 'string' },
+              brandName: { type: ['string', 'null'] },
+              inventoryUnit: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+        },
+      },
+      PharmacyReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: {
+            type: 'array',
+            items: {
+              oneOf: [
+                { $ref: '#/components/schemas/LowStockMedicineRow' },
+                { $ref: '#/components/schemas/NearExpiryBatchRow' },
+              ],
+            },
+          },
+          meta: {
+            type: 'object',
+            required: ['pagination', 'summary', 'section'],
+            properties: {
+              pagination: { $ref: '#/components/schemas/ReportPagination' },
+              summary: { $ref: '#/components/schemas/PharmacyAlertSummary' },
+              section: { type: 'string', enum: ['low_stock', 'near_expiry'] },
+            },
+          },
+        },
+      },
+      LaboratoryReportRow: {
+        type: 'object',
+        required: ['id', 'requestedAt', 'status', 'patient', 'requestedBy', 'items'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          requestedAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/LabRequestStatus' },
+          patient: {
+            type: 'object',
+            required: ['id', 'patientNumber', 'firstName', 'lastName', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              patientNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+          requestedBy: {
+            type: 'object',
+            required: ['id', 'specialization', 'employee'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              specialization: { type: 'string' },
+              employee: {
+                type: 'object',
+                required: ['employeeNumber', 'firstName', 'lastName'],
+                properties: {
+                  employeeNumber: { type: 'string' },
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                },
+              },
+            },
+          },
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['id', 'status', 'sampleCollectedAt', 'testCode', 'testName'],
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                status: { type: 'string' },
+                sampleCollectedAt: { type: ['string', 'null'], format: 'date-time' },
+                testCode: { type: 'string' },
+                testName: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      LaboratoryReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/LaboratoryReportRow' } },
+          meta: {
+            type: 'object',
+            required: ['pagination'],
+            properties: { pagination: { $ref: '#/components/schemas/ReportPagination' } },
+          },
+        },
+      },
+      StaffReportRow: {
+        type: 'object',
+        required: ['id', 'employeeNumber', 'firstName', 'lastName', 'jobTitle', 'employmentStatus', 'hireDate', 'endDate', 'department', 'doctorProfile'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          employeeNumber: { type: 'string' },
+          firstName: { type: 'string' },
+          lastName: { type: 'string' },
+          jobTitle: { type: 'string' },
+          employmentStatus: { $ref: '#/components/schemas/EmploymentStatus' },
+          hireDate: { type: 'string', format: 'date' },
+          endDate: { type: ['string', 'null'], format: 'date' },
+          department: {
+            type: 'object',
+            required: ['id', 'code', 'name', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              code: { type: 'string' },
+              name: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+          doctorProfile: {
+            type: ['object', 'null'],
+            required: ['id', 'licenseNumber', 'specialization', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              licenseNumber: { type: 'string' },
+              specialization: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+        },
+      },
+      StaffReportResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/StaffReportRow' } },
+          meta: {
+            type: 'object',
+            required: ['pagination'],
+            properties: { pagination: { $ref: '#/components/schemas/ReportPagination' } },
+          },
+        },
+      },
+      DashboardResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'object',
+            required: ['hospitalDate', 'currency'],
+            properties: {
+              hospitalDate: { type: 'string', format: 'date' },
+              currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+              totalPatients: {
+                type: 'object',
+                required: ['count'],
+                properties: { count: { type: 'integer' } },
+              },
+              todaysAppointments: {
+                type: 'object',
+                required: ['count'],
+                properties: { count: { type: 'integer' } },
+              },
+              revenueSummary: {
+                type: 'object',
+                required: ['currency', 'paymentCount', 'totalAmount'],
+                properties: {
+                  currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+                  paymentCount: { type: 'integer' },
+                  totalAmount: { type: 'string' },
+                },
+              },
+              laboratoryRequests: {
+                type: 'object',
+                required: ['count'],
+                properties: { count: { type: 'integer' } },
+              },
+              pharmacyAlerts: {
+                type: 'object',
+                required: ['lowStockMedicineCount', 'nearExpiryBatchCount'],
+                properties: {
+                  lowStockMedicineCount: { type: 'integer' },
+                  nearExpiryBatchCount: { type: 'integer' },
+                },
               },
             },
           },

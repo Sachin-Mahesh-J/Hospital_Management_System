@@ -3,7 +3,9 @@
 Status: Approved design; authentication, authorization, Patient Management,
 organization/staff/doctor/schedule management, Appointment Management,
 Medical Records/Prescriptions, Laboratory Management, Pharmacy Management,
-and Billing/Payments are implemented; remaining business modules remain planned
+Billing/Payments, minimal Admission Management, and Reports/Dashboard under
+D-027 are implemented. Attendance/leave application APIs and patient document
+upload remain deferred.
 
 ## Implemented core infrastructure
 
@@ -98,7 +100,8 @@ infrastructure:
 
 - `app`: routing, providers, theme, and application shell.
 - `features`: patients, departments, employees, doctors, doctor schedules,
-  appointments, admissions, medical records, prescriptions, laboratory, pharmacy, and billing.
+  appointments, admissions, medical records, prescriptions, laboratory, pharmacy, billing,
+  and reports.
 - `shared`: reusable controls, tables, forms, dialogs, notifications, and state views.
 - `api`: central REST client, API types, error mapping, and authentication refresh.
 
@@ -108,7 +111,7 @@ Key rules:
 - Server data uses the central API client and TanStack Query. One application
   `QueryClient` owns list/detail caching for patients, organization records,
   appointments, admissions, medical records, prescriptions, medicines, laboratory,
-  pharmacy inventory/movements, and billing invoices/payments; mutations invalidate the
+  pharmacy inventory/movements, billing invoices/payments, and reports/dashboard; mutations invalidate the
   narrow key families and authentication
   teardown clears user-scoped server state.
 - The access token remains in memory.

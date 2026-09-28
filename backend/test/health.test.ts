@@ -61,6 +61,14 @@ describe('API infrastructure', () => {
     const documentation = await request(app).get('/api/docs/').expect(200)
 
     expect(specification.body.paths).toHaveProperty('/api/v1/health')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/patients')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/appointments')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/revenue')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/pharmacy')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/laboratory')
+    expect(specification.body.paths).toHaveProperty('/api/v1/reports/staff')
+    expect(specification.body.paths).toHaveProperty('/api/v1/dashboard')
+    expect(specification.body.info.version).toBe('0.11.0')
     expect(documentation.text).toContain('Swagger UI')
   })
 

@@ -52,6 +52,10 @@ project initialization.
 Product Milestone 12 delivered billing invoices, consultation/laboratory/pharmacy
 charges, payments, linked payment reversal, voiding, billing-safe lookups, and
 printable receipts, as documented in `docs/development/billing-management.md`.
+Product Milestone 14 delivered read-only reports and dashboard metrics under
+D-027, as documented in `docs/development/reports-and-dashboard.md`. CSV/PDF
+export, attendance/leave reports, and advanced analytics remain deferred.
+
 Product Milestone 13 delivered minimal inpatient admission management under
 D-026, as documented in `docs/development/inpatient-outpatient-management.md`.
 Admission billing, wards/beds, transfers, and JWT-level identity mapping remain

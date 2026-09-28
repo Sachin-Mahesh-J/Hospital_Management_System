@@ -71,6 +71,12 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.admissionUpdate, 'Update ordinary admission fields while admitted.'],
   [PERMISSIONS.admissionDischarge, 'Discharge an admitted inpatient.'],
   [PERMISSIONS.admissionCancel, 'Cancel an admitted inpatient admission.'],
+  [PERMISSIONS.reportPatientRead, 'Read the administrative patient report.'],
+  [PERMISSIONS.reportAppointmentRead, 'Read the appointment report.'],
+  [PERMISSIONS.reportRevenueRead, 'Read the revenue report and revenue dashboard summary.'],
+  [PERMISSIONS.reportPharmacyRead, 'Read the pharmacy report and pharmacy-alert dashboard metrics.'],
+  [PERMISSIONS.reportLaboratoryRead, 'Read the laboratory report and laboratory-request dashboard metric.'],
+  [PERMISSIONS.reportStaffRead, 'Read the staff report of employees, departments, and doctor master data.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -112,6 +118,12 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.invoiceVoid,
     PERMISSIONS.paymentRead,
     PERMISSIONS.paymentReverse,
+    PERMISSIONS.reportPatientRead,
+    PERMISSIONS.reportAppointmentRead,
+    PERMISSIONS.reportRevenueRead,
+    PERMISSIONS.reportPharmacyRead,
+    PERMISSIONS.reportLaboratoryRead,
+    PERMISSIONS.reportStaffRead,
   ],
   receptionist: [
     PERMISSIONS.identitySelfRead,
@@ -165,6 +177,7 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.labRequestRead,
     PERMISSIONS.labSampleCollect,
     PERMISSIONS.labResultEnter,
+    PERMISSIONS.reportLaboratoryRead,
   ],
   pharmacist: [
     PERMISSIONS.identitySelfRead,
@@ -177,6 +190,7 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.prescriptionRead,
     PERMISSIONS.prescriptionDispense,
     PERMISSIONS.prescriptionReverse,
+    PERMISSIONS.reportPharmacyRead,
   ],
   accountant: [
     PERMISSIONS.identitySelfRead,
@@ -189,6 +203,7 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.paymentRead,
     PERMISSIONS.paymentCreate,
     PERMISSIONS.paymentReverse,
+    PERMISSIONS.reportRevenueRead,
   ],
 }
 
