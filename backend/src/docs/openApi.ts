@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.9.0',
+    version: '0.10.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -653,6 +653,118 @@ export const openApiDocument = {
           '403': { description: 'appointment.status.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '404': { description: 'Appointment not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '409': { description: 'Status transition is not allowed.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/admissions': {
+      get: {
+        summary: 'List admissions',
+        description: 'Requires admission.read. Pagination uses controlled page, pageSize, enums, and UUIDs. Lists are permission-wide with no ownership filter.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'attendingDoctorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/AdmissionStatus' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['admittedAt', 'admissionNumber', 'status', 'createdAt'], default: 'admittedAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated admissions.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Register an admission',
+        description: 'Requires admission.create. Status is always admitted. admissionNumber, admittedAt, and createdByUserId are server-generated. Deceased patients and a second active admission for the same patient are rejected. Attending doctor is optional and must be an active doctor profile with an active employee when supplied.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateAdmissionRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Admission created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionResponse' } } } },
+          '400': { description: 'Invalid admission data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient or doctor not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Deceased patient, inactive or terminated doctor, or an active admission already exists.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/admissions/{id}': {
+      get: {
+        summary: 'Get an admission',
+        description: 'Requires admission.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Current admission.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionResponse' } } } },
+          '400': { description: 'Invalid admission ID.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      patch: {
+        summary: 'Update ordinary admission fields',
+        description: 'Requires admission.update. No current role is granted this permission. Allowed only while status is admitted. Only attendingDoctorId and reason may change.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateAdmissionRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Admission updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionResponse' } } } },
+          '400': { description: 'Invalid admission data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Admission or doctor not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Admission is not admitted, or the doctor cannot be assigned.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/admissions/{id}/discharge': {
+      post: {
+        summary: 'Discharge an admission',
+        description: 'Requires admission.discharge. No current role is granted this permission. Allowed only from admitted. dischargedAt is server time. dischargeSummary is required and nonblank. Discharged is terminal.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/DischargeAdmissionRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Admission discharged.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionResponse' } } } },
+          '400': { description: 'Invalid discharge data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.discharge is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Admission is not eligible for discharge.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/admissions/{id}/cancel': {
+      post: {
+        summary: 'Cancel an admission',
+        description: 'Requires admission.cancel. No current role is granted this permission. Allowed only from admitted. The admission reason is preserved. The cancellation reason is stored in audit metadata. Cancelled is terminal.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CancelAdmissionRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Admission cancelled.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AdmissionResponse' } } } },
+          '400': { description: 'Invalid cancellation data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'admission.cancel is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Admission is not eligible for cancellation.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -1857,6 +1969,115 @@ export const openApiDocument = {
         required: ['data', 'meta'],
         properties: {
           data: { type: 'array', items: { $ref: '#/components/schemas/Appointment' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      AdmissionStatus: {
+        type: 'string',
+        enum: ['admitted', 'discharged', 'cancelled'],
+      },
+      Admission: {
+        type: 'object',
+        required: ['id', 'admissionNumber', 'patientId', 'attendingDoctorId', 'admittedAt', 'dischargedAt', 'status', 'reason', 'dischargeSummary', 'createdByUserId', 'createdAt', 'updatedAt', 'patient', 'attendingDoctor', 'createdBy'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          admissionNumber: { type: 'string', maxLength: 50 },
+          patientId: { type: 'string', format: 'uuid' },
+          attendingDoctorId: { type: ['string', 'null'], format: 'uuid' },
+          admittedAt: { type: 'string', format: 'date-time' },
+          dischargedAt: { type: ['string', 'null'], format: 'date-time' },
+          status: { $ref: '#/components/schemas/AdmissionStatus' },
+          reason: { type: 'string', minLength: 1, maxLength: 5000 },
+          dischargeSummary: { type: ['string', 'null'], maxLength: 5000 },
+          createdByUserId: { type: 'string', format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          patient: {
+            type: 'object',
+            required: ['id', 'patientNumber', 'firstName', 'lastName', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              patientNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              status: { $ref: '#/components/schemas/PatientStatus' },
+            },
+          },
+          attendingDoctor: {
+            type: ['object', 'null'],
+            required: ['id', 'licenseNumber', 'specialization', 'status', 'employee'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              licenseNumber: { type: 'string' },
+              specialization: { type: 'string' },
+              status: { $ref: '#/components/schemas/DoctorStatus' },
+              employee: {
+                type: 'object',
+                required: ['id', 'employeeNumber', 'firstName', 'lastName', 'employmentStatus'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  employeeNumber: { type: 'string' },
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                  employmentStatus: { $ref: '#/components/schemas/EmploymentStatus' },
+                },
+              },
+            },
+          },
+          createdBy: {
+            type: 'object',
+            required: ['id', 'username'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              username: { type: 'string' },
+            },
+          },
+        },
+      },
+      CreateAdmissionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['patientId', 'reason'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid' },
+          attendingDoctorId: { type: ['string', 'null'], format: 'uuid' },
+          reason: { type: 'string', minLength: 1, maxLength: 5000 },
+        },
+      },
+      UpdateAdmissionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          attendingDoctorId: { type: ['string', 'null'], format: 'uuid' },
+          reason: { type: 'string', minLength: 1, maxLength: 5000 },
+        },
+      },
+      DischargeAdmissionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['dischargeSummary'],
+        properties: {
+          dischargeSummary: { type: 'string', minLength: 1, maxLength: 5000 },
+        },
+      },
+      CancelAdmissionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['reason'],
+        properties: {
+          reason: { type: 'string', minLength: 1, maxLength: 500, description: 'Cancellation reason stored in audit metadata. The admission reason is unchanged.' },
+        },
+      },
+      AdmissionResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/Admission' } },
+      },
+      AdmissionListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/Admission' } },
           meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
         },
       },

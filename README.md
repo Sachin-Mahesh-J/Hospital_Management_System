@@ -5,10 +5,10 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 11 implemented pharmacy inventory, stock receiving and adjustments,
-append-only stock movements, prescription dispensing, partial dispensing, and
-full dispense reversal under D-024. Billing and admissions management remain
-deferred.
+Milestone 12 implemented billing invoices, consultation, laboratory, and pharmacy
+charges, payments, linked payment reversal, and printable receipts under D-025.
+Milestone 13 implemented minimal inpatient admission management under D-026. See
+`docs/development/inpatient-outpatient-management.md`.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -184,6 +184,8 @@ result entry, and printable reports are documented in
 adjustments, movements, dispensing, and reversal are documented in
 `docs/development/pharmacy-management.md`. Billing invoices, payments, and
 printable receipts are documented in `docs/development/billing-management.md`.
+Minimal inpatient admissions are documented in
+`docs/development/inpatient-outpatient-management.md`.
 
 ## Approved stack
 

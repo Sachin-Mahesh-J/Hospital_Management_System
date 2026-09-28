@@ -41,8 +41,10 @@ configuration/business policy, not primary keys.
 
 Patient Management currently allocates an interim unique `P-<UUID>` patient number.
 Employee Management currently allocates an interim unique `E-<UUID>` employee number.
-Those values satisfy the unique business-number constraints and concurrent
-registration safety. Hospital-facing display formats remain an open business policy.
+Admission Management currently allocates an interim unique `ADM-<UUID>` admission
+number under D-026. Those values satisfy the unique business-number constraints and
+concurrent registration safety. Hospital-facing display formats remain an open
+business policy.
 
 ### D-007 — Time and timezone
 
@@ -370,6 +372,39 @@ implemented.
 
 Full context: `docs/development/billing-management.md`.
 
+### D-026 — Inpatient and admission management
+
+D-026 is APPROVED and is the Milestone 13 admission policy. It specializes D-009
+and D-017 for application behavior. The physical `admissions` table is reused.
+The only schema addition is a partial unique index enforcing one `admitted` row
+per patient.
+
+Permissions:
+
+| Permission | Administrator | Doctor | Nurse | Receptionist | Laboratory Staff | Pharmacist | Accountant |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `admission.read` | no | no | yes | yes | no | no | no |
+| `admission.create` | no | no | no | yes | no | no | no |
+| `admission.update` | no | no | no | no | no | no | no |
+| `admission.discharge` | no | no | no | no | no | no | no |
+| `admission.cancel` | no | no | no | no | no | no | no |
+
+Administrator and Doctor receive no admission permissions. Nurse can read.
+Receptionist can read and create. Update, discharge, and cancel exist as
+backend operations and remain ungranted to current roles.
+
+Lifecycle is only `admitted → discharged` and `admitted → cancelled`. Both
+terminal states are irreversible. Admission numbers are server-generated
+`ADM-<UUID>`. `admittedAt` and `dischargedAt` are server time. Active and
+inactive patients may be admitted; deceased patients are rejected. Attending
+doctor is optional, must be an active doctor profile with an active employee
+when supplied, and may change only while admitted. Cancellation reason is stored
+in audit metadata; the admission `reason` is preserved. Discharge requires a
+nonblank summary. Outpatient care remains appointments plus medical records.
+Admission billing remains deferred under D-025.
+
+Full context: `docs/development/inpatient-outpatient-management.md`.
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:
@@ -381,8 +416,12 @@ These require a decision before implementing their affected module:
   overlap, and holiday calendars. Explicit start/end booking, active doctor/patient
   conflicts, appointment cancellation/reschedule eligibility, and status transitions
   are resolved by D-013, D-017, and D-021.
-- Admission cancellation policy and discharge-content requirements. Status values and
-  optional responsible clinician storage are resolved.
+- Admission cancellation history, discharge checklists, and resource-level
+  “relevant admission” filters. Status values, optional attending doctor,
+  numbering, eligibility, permissions, one-active-admission cardinality, and
+  terminal lifecycle transitions are resolved by D-017 and D-026. Milestone 13
+  implementation is documented in
+  `docs/development/inpatient-outpatient-management.md`.
 - Clinical note/report formats, sign-off permissions, and nurse write authority.
   Amendment storage is resolved by D-014.
 - Laboratory catalog write APIs, structured numeric/qualitative result validation,

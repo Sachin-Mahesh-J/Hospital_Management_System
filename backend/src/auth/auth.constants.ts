@@ -60,4 +60,9 @@ export const PERMISSIONS = {
   paymentRead: 'payment.read',
   paymentCreate: 'payment.create',
   paymentReverse: 'payment.reverse',
+  admissionRead: 'admission.read',
+  admissionCreate: 'admission.create',
+  admissionUpdate: 'admission.update',
+  admissionDischarge: 'admission.discharge',
+  admissionCancel: 'admission.cancel',
 } as const

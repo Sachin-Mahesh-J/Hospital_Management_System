@@ -80,6 +80,13 @@ engineering policy for this milestone, not a claim from the source PDF.
   `docs/development/billing-management.md`. Accountant does not receive
   `patient.read` or clinical permissions. Billing-safe DTOs omit diagnoses,
   results, and unnecessary demographics.
+- Admission Management currently authorizes `admission.read`,
+  `admission.create`, `admission.update`, `admission.discharge`, and
+  `admission.cancel` as documented in
+  `docs/development/inpatient-outpatient-management.md`. Administrator and
+  Doctor receive no admission permissions. Nurse can read. Receptionist can
+  read and create. Update, discharge, and cancel are ungranted to current
+  roles. Resource-level “relevant admission” scoping remains deferred.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

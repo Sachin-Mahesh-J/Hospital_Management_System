@@ -461,6 +461,8 @@ Purpose: Minimal inpatient admission lifecycle; no bed/ward model is required.
 - Checks: valid status; discharge not before admission; discharged status requires
   discharge time, and other statuses must not have one.
 - Indexes: `(patient_id, admitted_at DESC)`, `(status, admitted_at)`.
+- Partial unique index `uq_admissions_one_active_per_patient` on `patient_id`
+  where `status = 'admitted'` (D-026).
 - Delete: patient, doctor, and actor restricted.
 
 #### `medical_records`

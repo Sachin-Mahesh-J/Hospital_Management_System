@@ -15,6 +15,7 @@ import {
 import { requestContext } from './middleware/requestContext.js'
 import { authRouter } from './modules/auth/auth.routes.js'
 import { departmentRouter } from './modules/departments/department.routes.js'
+import { admissionRouter } from './modules/admissions/admission.routes.js'
 import { appointmentRouter } from './modules/appointments/appointment.routes.js'
 import { doctorRouter } from './modules/doctors/doctor.routes.js'
 import { employeeRouter } from './modules/employees/employee.routes.js'
@@ -77,6 +78,7 @@ export function createApp() {
   app.use('/api/v1/employees', employeeRouter)
   app.use('/api/v1/doctors', doctorRouter)
   app.use('/api/v1/appointments', appointmentRouter)
+  app.use('/api/v1/admissions', admissionRouter)
   app.use('/api/v1/medical-records', medicalRecordRouter)
   app.use('/api/v1/prescriptions', prescriptionRouter)
   app.use('/api/v1/medicines', medicineRouter)

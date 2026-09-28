@@ -8,6 +8,9 @@ import { AppointmentCreatePage } from '../features/appointments/AppointmentCreat
 import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage'
 import { AppointmentEditPage } from '../features/appointments/AppointmentEditPage'
 import { AppointmentListPage } from '../features/appointments/AppointmentListPage'
+import { AdmissionCreatePage } from '../features/admissions/AdmissionCreatePage'
+import { AdmissionDetailPage } from '../features/admissions/AdmissionDetailPage'
+import { AdmissionListPage } from '../features/admissions/AdmissionListPage'
 import { DepartmentCreatePage } from '../features/departments/DepartmentCreatePage'
 import { DepartmentDetailPage } from '../features/departments/DepartmentDetailPage'
 import { DepartmentEditPage } from '../features/departments/DepartmentEditPage'
@@ -183,6 +186,24 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="appointment.update" />,
                     children: [
                       { path: ':appointmentId/edit', element: <AppointmentEditPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'admissions',
+                children: [
+                  {
+                    element: <PermissionRoute permission="admission.read" />,
+                    children: [
+                      { index: true, element: <AdmissionListPage /> },
+                      { path: ':admissionId', element: <AdmissionDetailPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="admission.create" />,
+                    children: [
+                      { path: 'new', element: <AdmissionCreatePage /> },
                     ],
                   },
                 ],

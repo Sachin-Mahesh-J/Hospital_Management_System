@@ -98,7 +98,7 @@ infrastructure:
 
 - `app`: routing, providers, theme, and application shell.
 - `features`: patients, departments, employees, doctors, doctor schedules,
-  appointments, medical records, prescriptions, laboratory, pharmacy, and billing.
+  appointments, admissions, medical records, prescriptions, laboratory, pharmacy, and billing.
 - `shared`: reusable controls, tables, forms, dialogs, notifications, and state views.
 - `api`: central REST client, API types, error mapping, and authentication refresh.
 
@@ -107,7 +107,7 @@ Key rules:
 - `VITE_API_URL` provides the API location.
 - Server data uses the central API client and TanStack Query. One application
   `QueryClient` owns list/detail caching for patients, organization records,
-  appointments, medical records, prescriptions, medicines, laboratory,
+  appointments, admissions, medical records, prescriptions, medicines, laboratory,
   pharmacy inventory/movements, and billing invoices/payments; mutations invalidate the
   narrow key families and authentication
   teardown clears user-scoped server state.

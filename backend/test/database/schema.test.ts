@@ -148,6 +148,41 @@ async function createAppointment(
   `
 }
 
+async function createAdmissionRow(
+  transaction: Prisma.TransactionClient,
+  values: {
+    patientId: string
+    createdByUserId: string
+    attendingDoctorId?: string | null
+    status?: string
+    admittedAt?: Date
+    dischargedAt?: Date | null
+    reason?: string
+    dischargeSummary?: string | null
+    admissionNumber?: string
+  },
+): Promise<string> {
+  const admissionNumber = values.admissionNumber ?? `ADM-${randomUUID()}`
+  const admittedAt = values.admittedAt ?? new Date('2030-01-01T08:00:00.000Z')
+  const status = values.status ?? 'admitted'
+  const rows = await transaction.$queryRaw<Array<{ id: string }>>`
+    INSERT INTO "admissions" (
+      "admission_number", "patient_id", "attending_doctor_id", "admitted_at",
+      "discharged_at", "status", "reason", "discharge_summary",
+      "created_by_user_id"
+    )
+    VALUES (
+      ${admissionNumber}, ${values.patientId}::uuid,
+      ${values.attendingDoctorId ?? null}::uuid, ${admittedAt},
+      ${values.dischargedAt ?? null}, ${status},
+      ${values.reason ?? 'Schema admission'}, ${values.dischargeSummary ?? null},
+      ${values.createdByUserId}::uuid
+    )
+    RETURNING "id"
+  `
+  return rows[0]!.id
+}
+
 async function createLabRequestItem(
   transaction: Prisma.TransactionClient,
 ): Promise<{
@@ -445,6 +480,150 @@ describe('PostgreSQL physical schema', () => {
     })
   })
 
+  it('enforces one active admission per patient', async () => {
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      await createAdmissionRow(transaction, { patientId, createdByUserId: userId })
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "admitted_at", "status", "reason",
+            "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${patientId}::uuid,
+            ${new Date('2030-01-02T08:00:00.000Z')}, 'admitted',
+            'Second active', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23505', 'patient_id')
+    })
+  })
+
+  it('allows discharged and cancelled admissions alongside one active row', async () => {
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      const { doctorId } = await createDoctor(transaction)
+      await createAdmissionRow(transaction, {
+        patientId,
+        createdByUserId: userId,
+        attendingDoctorId: doctorId,
+      })
+      await createAdmissionRow(transaction, {
+        patientId,
+        createdByUserId: userId,
+        status: 'discharged',
+        admittedAt: new Date('2029-12-01T08:00:00.000Z'),
+        dischargedAt: new Date('2029-12-05T08:00:00.000Z'),
+      })
+      await createAdmissionRow(transaction, {
+        patientId,
+        createdByUserId: userId,
+        status: 'cancelled',
+        admittedAt: new Date('2029-11-01T08:00:00.000Z'),
+      })
+    })
+  })
+
+  it('enforces admission foreign keys', async () => {
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "admitted_at", "status", "reason",
+            "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${randomUUID()}::uuid,
+            ${new Date('2030-01-02T08:00:00.000Z')}, 'admitted',
+            'Missing patient', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23503', 'fk_admissions_patient_id')
+    })
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "attending_doctor_id",
+            "admitted_at", "status", "reason", "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${patientId}::uuid, ${randomUUID()}::uuid,
+            ${new Date('2030-01-02T08:00:00.000Z')}, 'cancelled',
+            'Missing doctor', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23503', 'fk_admissions_attending_doctor_id')
+    })
+  })
+
+  it('preserves admission status and discharge date constraints', async () => {
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "admitted_at", "status", "reason",
+            "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${patientId}::uuid,
+            ${new Date('2030-01-02T08:00:00.000Z')}, 'pending',
+            'Invalid status', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23514', 'ck_admissions_status')
+    })
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "admitted_at", "status", "reason",
+            "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${patientId}::uuid,
+            ${new Date('2030-01-02T08:00:00.000Z')}, 'discharged',
+            'No discharge time', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23514', 'ck_admissions_discharge_state')
+    })
+    await withRollback(async (transaction) => {
+      const userId = await createUser(transaction)
+      const patientId = await createPatient(transaction)
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "admissions" (
+            "admission_number", "patient_id", "admitted_at", "discharged_at",
+            "status", "reason", "created_by_user_id"
+          )
+          VALUES (
+            ${`ADM-${randomUUID()}`}, ${patientId}::uuid,
+            ${new Date('2030-01-03T08:00:00.000Z')},
+            ${new Date('2030-01-02T08:00:00.000Z')},
+            'discharged', 'Early discharge', ${userId}::uuid
+          )
+        `,
+      )
+      expectPostgresViolation(error, '23514', 'ck_admissions_discharge_time')
+    })
+  })
+
   it('uses approved billing precision and enforces invoice arithmetic', async () => {
     const columns = await prisma.$queryRaw<
       Array<{
@@ -567,13 +746,15 @@ describe('PostgreSQL physical schema', () => {
           'uq_users_username_ci',
           'idx_refresh_sessions_user_active',
           'idx_patients_name_ci',
-          'idx_lab_results_lab_request_item_id_version_number'
+          'idx_lab_results_lab_request_item_id_version_number',
+          'uq_admissions_one_active_per_patient'
         )
     `
     expect(indexes.map(({ indexname }) => indexname).sort()).toEqual([
       'idx_lab_results_lab_request_item_id_version_number',
       'idx_patients_name_ci',
       'idx_refresh_sessions_user_active',
+      'uq_admissions_one_active_per_patient',
       'uq_users_username_ci',
     ])
   })

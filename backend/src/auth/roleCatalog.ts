@@ -66,6 +66,11 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.paymentRead, 'Read invoice payments and printable receipt data.'],
   [PERMISSIONS.paymentCreate, 'Record payments against issued invoices.'],
   [PERMISSIONS.paymentReverse, 'Fully reverse a recorded payment.'],
+  [PERMISSIONS.admissionRead, 'Read inpatient admission records.'],
+  [PERMISSIONS.admissionCreate, 'Register inpatient admissions.'],
+  [PERMISSIONS.admissionUpdate, 'Update ordinary admission fields while admitted.'],
+  [PERMISSIONS.admissionDischarge, 'Discharge an admitted inpatient.'],
+  [PERMISSIONS.admissionCancel, 'Cancel an admitted inpatient admission.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -123,6 +128,8 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.appointmentCancel,
     PERMISSIONS.appointmentReschedule,
     PERMISSIONS.appointmentStatusUpdate,
+    PERMISSIONS.admissionRead,
+    PERMISSIONS.admissionCreate,
   ],
   doctor: [
     PERMISSIONS.identitySelfRead,
@@ -150,6 +157,7 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.medicalRecordRead,
     PERMISSIONS.prescriptionRead,
     PERMISSIONS.labRequestRead,
+    PERMISSIONS.admissionRead,
   ],
   laboratory_staff: [
     PERMISSIONS.identitySelfRead,

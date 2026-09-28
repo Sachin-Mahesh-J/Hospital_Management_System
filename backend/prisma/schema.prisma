@@ -350,6 +350,8 @@ model Admission {
 
   @@index([patientId, admittedAt(sort: Desc)], map: "idx_admissions_patient_id_admitted_at")
   @@index([status, admittedAt], map: "idx_admissions_status_admitted_at")
+  // One active admission per patient is enforced by PostgreSQL partial unique
+  // index uq_admissions_one_active_per_patient WHERE status = 'admitted'.
   @@map("admissions")
 }
 
