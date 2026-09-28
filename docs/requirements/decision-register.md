@@ -135,6 +135,22 @@ reversal time. Partial reversals are excluded. The reversal transaction appends 
 medicine batch and quantity; neither the original dispense nor its movements are
 modified. This decision introduces no automatic invoice or payment reversal behavior.
 
+### D-021 — Appointment management authorization and workflow
+
+Administrator and Receptionist receive `appointment.read`, `appointment.create`,
+`appointment.update`, `appointment.cancel`, `appointment.reschedule`, and
+`appointment.status.update`. Doctor, Nurse, Laboratory Staff, Pharmacist, and
+Accountant receive no appointment permissions in this milestone. Doctor/Nurse
+assigned-appointment access is deferred until authenticated-user → employee → doctor
+identity mapping can be enforced without a fake ownership check.
+
+Status transitions are: `scheduled` → `checked_in` | `no_show`; `checked_in` →
+`completed`; cancellation from `scheduled` or `checked_in` only, through the cancel
+operation. `completed`, `cancelled`, and `no_show` are terminal. Ordinary `PATCH`
+updates `reason` only. Booking and rescheduling require an active doctor profile and
+active employment status; patient existence is sufficient. There is no default
+duration and no past-booking prohibition.
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:
@@ -142,9 +158,10 @@ These require a decision before implementing their affected module:
 - Final patient-number display format, duplicate detection, emergency-contact
   validation, and consent. Patient Management currently uses interim `P-<UUID>`
   numbers and does not implement fuzzy duplicate matching.
-- Doctor appointment duration, availability recurrence, breaks, schedule-entry overlap,
-  and cancellation policy. Active doctor/patient booking conflicts and status values are
-  resolved by D-013 and D-017.
+- Doctor appointment duration defaults, availability recurrence, breaks, schedule-entry
+  overlap, and holiday calendars. Explicit start/end booking, active doctor/patient
+  conflicts, appointment cancellation/reschedule eligibility, and status transitions
+  are resolved by D-013, D-017, and D-021.
 - Admission cancellation policy and discharge-content requirements. Status values and
   optional responsible clinician storage are resolved.
 - Clinical note/report formats, sign-off permissions, and nurse write authority.

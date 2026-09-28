@@ -4,6 +4,10 @@ import {
 } from 'react-router-dom'
 import { ProtectedRoute } from '../auth/ProtectedRoute'
 import { PermissionRoute } from '../auth/PermissionRoute'
+import { AppointmentCreatePage } from '../features/appointments/AppointmentCreatePage'
+import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage'
+import { AppointmentEditPage } from '../features/appointments/AppointmentEditPage'
+import { AppointmentListPage } from '../features/appointments/AppointmentListPage'
 import { DepartmentCreatePage } from '../features/departments/DepartmentCreatePage'
 import { DepartmentDetailPage } from '../features/departments/DepartmentDetailPage'
 import { DepartmentEditPage } from '../features/departments/DepartmentEditPage'
@@ -135,6 +139,30 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="doctor.update" />,
                     children: [
                       { path: ':doctorId/edit', element: <DoctorEditPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'appointments',
+                children: [
+                  {
+                    element: <PermissionRoute permission="appointment.read" />,
+                    children: [
+                      { index: true, element: <AppointmentListPage /> },
+                      { path: ':appointmentId', element: <AppointmentDetailPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="appointment.create" />,
+                    children: [
+                      { path: 'new', element: <AppointmentCreatePage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="appointment.update" />,
+                    children: [
+                      { path: ':appointmentId/edit', element: <AppointmentEditPage /> },
                     ],
                   },
                 ],

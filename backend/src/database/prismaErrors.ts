@@ -29,3 +29,30 @@ export function isCheckConstraint(error: unknown): boolean {
     error.code === 'P2004'
   )
 }
+
+function errorText(error: unknown): string {
+  if (error == null) return ''
+  if (typeof error === 'string') return error
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return `${error.message} ${JSON.stringify(error.meta ?? {})}`
+  }
+  if (error instanceof Prisma.PrismaClientUnknownRequestError) {
+    return error.message
+  }
+  if (error instanceof Error) {
+    const cause = 'cause' in error ? errorText(error.cause) : ''
+    return `${error.message} ${cause}`
+  }
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
+export function isExclusionConstraint(
+  error: unknown,
+  constraintName: string,
+): boolean {
+  return errorText(error).includes(constraintName)
+}

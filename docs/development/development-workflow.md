@@ -49,9 +49,10 @@ Cursor must not commit or push unless explicitly instructed.
 Logical design precedes scaffolding, but the physical Prisma migration follows Prisma
 project initialization.
 
-Product Milestone 7 delivered departments, employees, doctor profiles, and explicit
-doctor schedules, including organization permissions and TanStack Query. Appointment
-booking, attendance, leave, recurrence, and schedule overlap policy remain deferred.
+Product Milestone 8 delivered appointment booking, cancellation, rescheduling, and
+approved status tracking, including appointment permissions and TanStack Query.
+Doctor/Nurse assigned-appointment access, recurrence, reminders, and hospital-timezone
+calendar views remain deferred.
 
 ## Testing strategy
 

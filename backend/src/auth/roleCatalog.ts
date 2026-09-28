@@ -32,6 +32,12 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.doctorScheduleRead, 'Read explicit doctor schedule intervals.'],
   [PERMISSIONS.doctorScheduleCreate, 'Create explicit doctor schedule intervals.'],
   [PERMISSIONS.doctorScheduleUpdate, 'Update explicit doctor schedule intervals.'],
+  [PERMISSIONS.appointmentRead, 'Read and search appointments.'],
+  [PERMISSIONS.appointmentCreate, 'Book appointments.'],
+  [PERMISSIONS.appointmentUpdate, 'Update ordinary appointment fields.'],
+  [PERMISSIONS.appointmentCancel, 'Cancel eligible appointments.'],
+  [PERMISSIONS.appointmentReschedule, 'Reschedule eligible appointments.'],
+  [PERMISSIONS.appointmentStatusUpdate, 'Apply approved appointment status transitions.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -56,6 +62,12 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.doctorScheduleRead,
     PERMISSIONS.doctorScheduleCreate,
     PERMISSIONS.doctorScheduleUpdate,
+    PERMISSIONS.appointmentRead,
+    PERMISSIONS.appointmentCreate,
+    PERMISSIONS.appointmentUpdate,
+    PERMISSIONS.appointmentCancel,
+    PERMISSIONS.appointmentReschedule,
+    PERMISSIONS.appointmentStatusUpdate,
   ],
   receptionist: [
     PERMISSIONS.identitySelfRead,
@@ -66,6 +78,12 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.departmentRead,
     PERMISSIONS.doctorRead,
     PERMISSIONS.doctorScheduleRead,
+    PERMISSIONS.appointmentRead,
+    PERMISSIONS.appointmentCreate,
+    PERMISSIONS.appointmentUpdate,
+    PERMISSIONS.appointmentCancel,
+    PERMISSIONS.appointmentReschedule,
+    PERMISSIONS.appointmentStatusUpdate,
   ],
   doctor: [
     PERMISSIONS.identitySelfRead,

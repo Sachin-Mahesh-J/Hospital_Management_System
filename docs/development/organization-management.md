@@ -7,8 +7,9 @@ Status: Implemented
 This module supports departments, employee/staff records, doctor profiles linked to
 existing employees, and explicit doctor schedule intervals.
 
-Appointment booking, attendance, leave, recurrence, schedule overlap policy, and
-employee account provisioning are not implemented.
+Appointment booking, cancellation, rescheduling, and approved status transitions are
+implemented in Milestone 8. Attendance, leave, recurrence, and schedule overlap policy
+are not implemented.
 
 ## API and layers
 

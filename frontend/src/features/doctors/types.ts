@@ -34,6 +34,7 @@ export type DoctorFilters = {
   search?: string
   status?: DoctorStatus
   departmentId?: string
+  employmentStatus?: 'active' | 'inactive' | 'terminated'
   sortBy?: 'licenseNumber' | 'specialization' | 'status' | 'createdAt' | 'lastName' | 'firstName'
   sortOrder?: 'asc' | 'desc'
 }

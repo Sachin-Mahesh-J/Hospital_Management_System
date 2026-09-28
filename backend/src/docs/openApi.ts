@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.4.0',
+    version: '0.5.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -465,7 +465,7 @@ export const openApiDocument = {
     '/api/v1/doctors/{doctorId}/schedules': {
       get: {
         summary: 'List explicit doctor schedules',
-        description: 'Requires doctor_schedule.read. Recurrence, overlap policy, and appointment booking are not implemented.',
+        description: 'Requires doctor_schedule.read. Recurrence, overlap policy, and schedule templates are not implemented.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'doctorId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
@@ -520,6 +520,139 @@ export const openApiDocument = {
           '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '403': { description: 'doctor_schedule.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '404': { description: 'Doctor or schedule not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/appointments': {
+      get: {
+        summary: 'List appointments',
+        description: 'Requires appointment.read. Filters are controlled enums and UUIDs. startsAtFrom/startsAtTo are timezone-aware UTC bounds on startsAt.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'doctorId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/AppointmentStatus' } },
+          { name: 'startsAtFrom', in: 'query', schema: { type: 'string', format: 'date-time', description: 'Timezone-aware ISO-8601 instant.' } },
+          { name: 'startsAtTo', in: 'query', schema: { type: 'string', format: 'date-time', description: 'Exclusive upper bound on startsAt.' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['startsAt', 'endsAt', 'status', 'createdAt'], default: 'startsAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated appointments.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Book an appointment',
+        description: 'Requires appointment.create. Status is scheduled. The interval must fit an available doctor schedule. Active doctor and patient overlaps are rejected by PostgreSQL exclusion constraints. createdByUserId is taken from the authenticated user.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateAppointmentRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Appointment created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid appointment data or naive timestamp.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient or doctor not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Schedule unavailable, inactive doctor, or overlapping active appointment.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/appointments/{id}': {
+      get: {
+        summary: 'Get an appointment',
+        description: 'Requires appointment.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Current appointment.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid appointment ID.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Appointment not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      patch: {
+        summary: 'Update ordinary appointment fields',
+        description: 'Requires appointment.update. Only reason may be changed. Status, times, patient, doctor, and cancellation fields are rejected.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateAppointmentRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Appointment updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid appointment data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Appointment not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/appointments/{id}/cancel': {
+      post: {
+        summary: 'Cancel an appointment',
+        description: 'Requires appointment.cancel. Allowed only from scheduled or checked_in. cancellationReason is required. cancelledAt and cancelledByUserId are set by the server. The appointment is retained.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CancelAppointmentRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Appointment cancelled.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid cancellation data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.cancel is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Appointment not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Appointment is not eligible for cancellation.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/appointments/{id}/reschedule': {
+      post: {
+        summary: 'Reschedule an appointment',
+        description: 'Requires appointment.reschedule. Allowed only from scheduled or checked_in. The original is cancelled and a replacement is created in one transaction. The replacement must belong to the same patient and independently satisfy booking rules. A rescheduling chain cannot form a cycle.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/RescheduleAppointmentRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Replacement appointment created; original cancelled.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid replacement data or naive timestamp.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.reschedule is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Original appointment, patient, or doctor not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Ineligible original, patient mismatch, schedule unavailable, inactive doctor, overlap, or cycle.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/appointments/{id}/status': {
+      patch: {
+        summary: 'Apply an approved appointment status transition',
+        description: 'Requires appointment.status.update. Allowed: scheduled→checked_in|no_show; checked_in→completed. Cancellation uses POST /cancel. completed, cancelled, and no_show are terminal.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateAppointmentStatusRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Status updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/AppointmentResponse' } } } },
+          '400': { description: 'Invalid status payload.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'appointment.status.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Appointment not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Status transition is not allowed.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -906,6 +1039,151 @@ export const openApiDocument = {
         required: ['data', 'meta'],
         properties: {
           data: { type: 'array', items: { $ref: '#/components/schemas/Schedule' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      AppointmentStatus: {
+        type: 'string',
+        enum: ['scheduled', 'checked_in', 'completed', 'cancelled', 'no_show'],
+      },
+      AppointmentRelatedInterval: {
+        type: 'object',
+        required: ['id', 'status', 'startsAt', 'endsAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          status: { $ref: '#/components/schemas/AppointmentStatus' },
+          startsAt: { type: 'string', format: 'date-time' },
+          endsAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      Appointment: {
+        type: 'object',
+        required: ['id', 'patientId', 'doctorId', 'startsAt', 'endsAt', 'status', 'reason', 'cancellationReason', 'cancelledAt', 'cancelledByUserId', 'rescheduledFromAppointmentId', 'createdByUserId', 'createdAt', 'updatedAt', 'patient', 'doctor', 'cancelledBy', 'createdBy', 'rescheduledFrom', 'rescheduledTo'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          patientId: { type: 'string', format: 'uuid' },
+          doctorId: { type: 'string', format: 'uuid' },
+          startsAt: { type: 'string', format: 'date-time' },
+          endsAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/AppointmentStatus' },
+          reason: { type: ['string', 'null'], maxLength: 1000 },
+          cancellationReason: { type: ['string', 'null'], maxLength: 500 },
+          cancelledAt: { type: ['string', 'null'], format: 'date-time' },
+          cancelledByUserId: { type: ['string', 'null'], format: 'uuid' },
+          rescheduledFromAppointmentId: { type: ['string', 'null'], format: 'uuid' },
+          createdByUserId: { type: 'string', format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          patient: {
+            type: 'object',
+            required: ['id', 'patientNumber', 'firstName', 'lastName', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              patientNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              status: { $ref: '#/components/schemas/PatientStatus' },
+            },
+          },
+          doctor: {
+            type: 'object',
+            required: ['id', 'licenseNumber', 'specialization', 'status', 'employee'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              licenseNumber: { type: 'string' },
+              specialization: { type: 'string' },
+              status: { $ref: '#/components/schemas/DoctorStatus' },
+              employee: {
+                type: 'object',
+                required: ['id', 'employeeNumber', 'firstName', 'lastName', 'employmentStatus'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  employeeNumber: { type: 'string' },
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                  employmentStatus: { $ref: '#/components/schemas/EmploymentStatus' },
+                },
+              },
+            },
+          },
+          cancelledBy: {
+            type: ['object', 'null'],
+            required: ['id', 'username'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              username: { type: 'string' },
+            },
+          },
+          createdBy: {
+            type: 'object',
+            required: ['id', 'username'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              username: { type: 'string' },
+            },
+          },
+          rescheduledFrom: { oneOf: [{ $ref: '#/components/schemas/AppointmentRelatedInterval' }, { type: 'null' }] },
+          rescheduledTo: { oneOf: [{ $ref: '#/components/schemas/AppointmentRelatedInterval' }, { type: 'null' }] },
+        },
+      },
+      CreateAppointmentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['patientId', 'doctorId', 'startsAt', 'endsAt'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid' },
+          doctorId: { type: 'string', format: 'uuid' },
+          startsAt: { type: 'string', format: 'date-time', description: 'Timezone-aware ISO-8601 instant.' },
+          endsAt: { type: 'string', format: 'date-time', description: 'Timezone-aware ISO-8601 instant after startsAt.' },
+          reason: { type: ['string', 'null'], maxLength: 1000 },
+        },
+      },
+      UpdateAppointmentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['reason'],
+        properties: {
+          reason: { type: ['string', 'null'], maxLength: 1000 },
+        },
+      },
+      CancelAppointmentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['cancellationReason'],
+        properties: {
+          cancellationReason: { type: 'string', minLength: 1, maxLength: 500 },
+        },
+      },
+      RescheduleAppointmentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['doctorId', 'startsAt', 'endsAt'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid', description: 'Optional; must match the original patient when supplied.' },
+          doctorId: { type: 'string', format: 'uuid' },
+          startsAt: { type: 'string', format: 'date-time' },
+          endsAt: { type: 'string', format: 'date-time' },
+          reason: { type: ['string', 'null'], maxLength: 1000 },
+        },
+      },
+      UpdateAppointmentStatusRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['status'],
+        properties: {
+          status: { type: 'string', enum: ['checked_in', 'completed', 'no_show'] },
+        },
+      },
+      AppointmentResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/Appointment' } },
+      },
+      AppointmentListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/Appointment' } },
           meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
         },
       },

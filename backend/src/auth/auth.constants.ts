@@ -26,4 +26,10 @@ export const PERMISSIONS = {
   doctorScheduleRead: 'doctor_schedule.read',
   doctorScheduleCreate: 'doctor_schedule.create',
   doctorScheduleUpdate: 'doctor_schedule.update',
+  appointmentRead: 'appointment.read',
+  appointmentCreate: 'appointment.create',
+  appointmentUpdate: 'appointment.update',
+  appointmentCancel: 'appointment.cancel',
+  appointmentReschedule: 'appointment.reschedule',
+  appointmentStatusUpdate: 'appointment.status.update',
 } as const

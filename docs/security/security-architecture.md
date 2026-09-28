@@ -51,6 +51,12 @@ engineering policy for this milestone, not a claim from the source PDF.
   `doctor.*`, and `doctor_schedule.*` as documented in
   `docs/development/organization-management.md`. Contextual doctor-owned schedule
   writes remain deferred because user-to-employee ownership is not enforced.
+- Appointment Management currently authorizes `appointment.read`,
+  `appointment.create`, `appointment.update`, `appointment.cancel`,
+  `appointment.reschedule`, and `appointment.status.update` for Administrator and
+  Receptionist only, as documented in `docs/development/appointment-management.md`.
+  Doctor/Nurse assigned-appointment access remains deferred because authenticated
+  user-to-employee-to-doctor mapping is not enforced.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.
@@ -103,6 +109,7 @@ Audit at minimum:
 - login success/failure, refresh-session revocation, and password/account changes;
 - user, role, and permission changes;
 - patient and document creation/access/material updates;
+- appointment creation, updates, cancellation, rescheduling, and status changes;
 - clinical record, prescription, and report changes;
 - laboratory collection, result entry, finalization, and correction;
 - dispensing and inventory adjustments;

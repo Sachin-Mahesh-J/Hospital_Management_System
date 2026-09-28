@@ -106,8 +106,9 @@ Key rules:
 
 - `VITE_API_URL` provides the API location.
 - Server data uses the central API client and TanStack Query. One application
-  `QueryClient` owns patient list/detail caching; mutations invalidate the narrow
-  patient key families and authentication teardown clears user-scoped server state.
+  `QueryClient` owns list/detail caching for patients, organization records, and
+  appointments; mutations invalidate the narrow key families and authentication
+  teardown clears user-scoped server state.
 - The access token remains in memory.
 - Route guards and permission-aware controls improve usability but do not authorize
   operations.

@@ -70,9 +70,18 @@ export function DoctorDetailPage() {
       <Can permission="doctor_schedule.read">
         <DoctorSchedulePanel doctorId={doctor.id} />
       </Can>
-      <Alert severity="info">
-        Appointment booking is deferred to the Appointment Management milestone.
-      </Alert>
+      <Can permission="appointment.create">
+        <Alert
+          action={
+            <Button color="inherit" component={Link} size="small" to="/appointments/new">
+              Book
+            </Button>
+          }
+          severity="info"
+        >
+          Book an appointment for this doctor from Appointment Management.
+        </Alert>
+      </Can>
     </Page>
   )
 }

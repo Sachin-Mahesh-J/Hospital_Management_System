@@ -20,6 +20,7 @@ function queryString(filters: DoctorFilters): string {
   if (filters.search) params.set('search', filters.search)
   if (filters.status) params.set('status', filters.status)
   if (filters.departmentId) params.set('departmentId', filters.departmentId)
+  if (filters.employmentStatus) params.set('employmentStatus', filters.employmentStatus)
   if (filters.sortBy) params.set('sortBy', filters.sortBy)
   if (filters.sortOrder) params.set('sortOrder', filters.sortOrder)
   return params.toString()

@@ -35,6 +35,11 @@ const navigation = [
     permission: 'doctor.read',
   },
   {
+    label: 'Appointments',
+    path: '/appointments',
+    permission: 'appointment.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',
