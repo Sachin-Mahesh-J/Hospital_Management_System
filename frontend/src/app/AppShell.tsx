@@ -20,6 +20,21 @@ const navigation = [
     permission: 'patient.read',
   },
   {
+    label: 'Departments',
+    path: '/departments',
+    permission: 'department.read',
+  },
+  {
+    label: 'Employees',
+    path: '/employees',
+    permission: 'employee.read',
+  },
+  {
+    label: 'Doctors',
+    path: '/doctors',
+    permission: 'doctor.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

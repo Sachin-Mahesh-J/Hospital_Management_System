@@ -47,6 +47,10 @@ engineering policy for this milestone, not a claim from the source PDF.
 - Patient Management currently authorizes `patient.read`, `patient.create`, and
   `patient.update` on the backend. Resource-level “relevant patient” scoping remains
   future work because assignment and care-team context do not exist yet.
+- Organization management currently authorizes `department.*`, `employee.*`,
+  `doctor.*`, and `doctor_schedule.*` as documented in
+  `docs/development/organization-management.md`. Contextual doctor-owned schedule
+  writes remain deferred because user-to-employee ownership is not enforced.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

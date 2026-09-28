@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { PERMISSIONS } from '../auth/auth.constants.js'
 import { hashPassword, validatePasswordPolicy } from '../auth/password.service.js'
+import { syncApprovedRolePermissions } from '../auth/roleCatalog.js'
 import { database } from '../database/database.service.js'
 import { writeAudit } from '../modules/audit/audit.service.js'
 
@@ -12,66 +12,6 @@ const bootstrapSchema = z.object({
     .string()
     .refine(validatePasswordPolicy, 'does not meet the HMS password policy'),
 })
-
-const roles = [
-  ['administrator', 'Administrator', 'Manages HMS identity and access.'],
-  ['doctor', 'Doctor', 'Clinical doctor role.'],
-  ['nurse', 'Nurse', 'Nursing staff role.'],
-  ['receptionist', 'Receptionist', 'Reception staff role.'],
-  ['laboratory_staff', 'Laboratory Staff', 'Laboratory staff role.'],
-  ['pharmacist', 'Pharmacist', 'Pharmacy staff role.'],
-  ['accountant', 'Accountant', 'Accounting staff role.'],
-] as const
-
-const permissions = [
-  [PERMISSIONS.identitySelfRead, 'Read own identity and access profile.'],
-  [
-    PERMISSIONS.identityPasswordChange,
-    'Change own password after current-password verification.',
-  ],
-  [PERMISSIONS.patientRead, 'Read and search patient demographic records.'],
-  [PERMISSIONS.patientCreate, 'Register patient demographic records.'],
-  [PERMISSIONS.patientUpdate, 'Update patient demographics and status.'],
-] as const
-
-const rolePermissionCodes: Record<(typeof roles)[number][0], readonly string[]> = {
-  administrator: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-    PERMISSIONS.patientRead,
-    PERMISSIONS.patientCreate,
-    PERMISSIONS.patientUpdate,
-  ],
-  receptionist: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-    PERMISSIONS.patientRead,
-    PERMISSIONS.patientCreate,
-    PERMISSIONS.patientUpdate,
-  ],
-  doctor: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-    PERMISSIONS.patientRead,
-  ],
-  nurse: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-    PERMISSIONS.patientRead,
-  ],
-  laboratory_staff: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-  ],
-  pharmacist: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-  ],
-  accountant: [
-    PERMISSIONS.identitySelfRead,
-    PERMISSIONS.identityPasswordChange,
-  ],
-}
 
 async function bootstrap(): Promise<'created' | 'already_exists'> {
   const input = bootstrapSchema.parse(process.env)
@@ -87,66 +27,7 @@ async function bootstrap(): Promise<'created' | 'already_exists'> {
         )::text AS lock_result
       `
 
-      const roleRows = new Map<string, string>()
-      for (const [code, name, description] of roles) {
-        const role = await transaction.role.upsert({
-          where: { code },
-          create: {
-            code,
-            name,
-            description,
-            status: 'active',
-            isSystem: true,
-          },
-          update: {
-            name,
-            description,
-            status: 'active',
-            isSystem: true,
-            updatedAt: new Date(),
-          },
-        })
-        roleRows.set(code, role.id)
-      }
-
-      const permissionIds = new Map<string, string>()
-      for (const [code, description] of permissions) {
-        const permission = await transaction.permission.upsert({
-          where: { code },
-          create: { code, description },
-          update: { description, updatedAt: new Date() },
-        })
-        permissionIds.set(code, permission.id)
-      }
-
-      for (const [roleCode, roleId] of roleRows) {
-        const approvedCodes = rolePermissionCodes[
-          roleCode as keyof typeof rolePermissionCodes
-        ]
-        for (const permissionCode of approvedCodes) {
-          const permissionId = permissionIds.get(permissionCode)!
-          await transaction.rolePermission.upsert({
-            where: {
-              roleId_permissionId: { roleId, permissionId },
-            },
-            create: { roleId, permissionId },
-            update: {},
-          })
-        }
-        await transaction.rolePermission.deleteMany({
-          where: {
-            roleId,
-            permission: {
-              code: {
-                in: permissions
-                  .map(([code]) => code)
-                  .filter((code) => !approvedCodes.includes(code)),
-              },
-            },
-          },
-        })
-      }
-
+      const roleRows = await syncApprovedRolePermissions(transaction)
       const administratorRoleId = roleRows.get('administrator')!
       const existingAdministrator = await transaction.userRole.findFirst({
         where: { roleId: administratorRoleId },

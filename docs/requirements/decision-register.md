@@ -40,8 +40,9 @@ numbers are separate unique business identifiers. Their final display formats ar
 configuration/business policy, not primary keys.
 
 Patient Management currently allocates an interim unique `P-<UUID>` patient number.
-That value satisfies the unique `patient_number` constraint and concurrent
-registration safety. A hospital-facing display format remains an open business policy.
+Employee Management currently allocates an interim unique `E-<UUID>` employee number.
+Those values satisfy the unique business-number constraints and concurrent
+registration safety. Hospital-facing display formats remain an open business policy.
 
 ### D-007 — Time and timezone
 

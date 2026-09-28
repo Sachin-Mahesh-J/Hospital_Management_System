@@ -14,6 +14,9 @@ import {
 } from './middleware/errorHandler.js'
 import { requestContext } from './middleware/requestContext.js'
 import { authRouter } from './modules/auth/auth.routes.js'
+import { departmentRouter } from './modules/departments/department.routes.js'
+import { doctorRouter } from './modules/doctors/doctor.routes.js'
+import { employeeRouter } from './modules/employees/employee.routes.js'
 import { healthRouter } from './modules/health/health.routes.js'
 import { patientRouter } from './modules/patients/patient.routes.js'
 
@@ -59,6 +62,9 @@ export function createApp() {
   app.use('/api/v1/health', healthRouter)
   app.use('/api/v1/auth', authRouter)
   app.use('/api/v1/patients', patientRouter)
+  app.use('/api/v1/departments', departmentRouter)
+  app.use('/api/v1/employees', employeeRouter)
+  app.use('/api/v1/doctors', doctorRouter)
   app.get('/api/v1/openapi.json', (_request, response) => {
     response.json(openApiDocument)
   })

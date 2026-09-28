@@ -1,7 +1,8 @@
 # System Architecture
 
-Status: Approved design; authentication, authorization, and Patient Management
-implemented; other business modules remain planned
+Status: Approved design; authentication, authorization, Patient Management, and
+organization/staff/doctor/schedule management are implemented; remaining business
+modules remain planned
 
 ## Implemented core infrastructure
 
@@ -19,6 +20,9 @@ implemented; other business modules remain planned
 - Layered Patient REST module with strict validation, repository-based Prisma access,
   explicit patient permissions, mutation audits, and non-destructive status handling.
 - TanStack Query patient list/detail caching and create/update invalidation.
+- Layered department, employee, doctor-profile, and explicit doctor-schedule modules
+  with least-privilege permissions, mutation audits, and nested department display
+  through the employee relationship.
 
 ## Architectural goals
 
@@ -92,7 +96,8 @@ The React application is organized by the same user-facing features plus shared
 infrastructure:
 
 - `app`: routing, providers, theme, and application shell.
-- `features`: patients, appointments, admissions, medical records, laboratory,
+- `features`: patients, departments, employees, doctors, doctor schedules,
+  appointments, admissions, medical records, laboratory,
   pharmacy, billing, staff, reports, and dashboard.
 - `shared`: reusable controls, tables, forms, dialogs, notifications, and state views.
 - `api`: central REST client, API types, error mapping, and authentication refresh.

@@ -5,10 +5,9 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 6 adds Patient Management to the Milestone 5 authentication foundation:
-registration, demographic and status updates, search, paginated listing, details,
-patient-specific RBAC and audit events, plus TanStack Query server-state management.
-Medical history and patient document storage remain deferred.
+Milestone 7 adds departments, employees, doctor profiles, and explicit doctor
+schedules on top of Patient Management. Appointment booking, attendance, leave,
+recurrence, and schedule overlap policy remain deferred.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -171,7 +170,8 @@ docs/                 Requirements, architecture, security, data, and workflow d
 The frontend communicates only with the REST API. Controllers delegate to application
 services, and focused business-module repositories are the only module layer that
 accesses Prisma. Patient API, permissions, query keys, and deferred scope are documented
-in `docs/development/patient-management.md`.
+in `docs/development/patient-management.md`. Organization, staff, doctor, and schedule
+APIs are documented in `docs/development/organization-management.md`.
 
 ## Approved stack
 
