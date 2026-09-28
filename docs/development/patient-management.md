@@ -8,9 +8,10 @@ The Patient module supports registration, demographic/contact updates, explicit
 `active`, `inactive`, and `deceased` status management, paginated listing, controlled
 sorting, search, and patient details.
 
-Medical history remains part of the future Medical Records module. Patient document
-upload remains deferred until its storage, retention, media, and malware-scanning
-policies are approved. Neither capability has a placeholder API or synthetic data.
+Medical history is implemented by the Medical Records module and requires
+`medical_record.read`. Patient demographic permission is not sufficient. Patient
+document upload remains deferred until its storage, retention, media, and
+malware-scanning policies are approved.
 
 ## API and layers
 

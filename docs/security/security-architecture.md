@@ -57,6 +57,11 @@ engineering policy for this milestone, not a claim from the source PDF.
   Receptionist only, as documented in `docs/development/appointment-management.md`.
   Doctor/Nurse assigned-appointment access remains deferred because authenticated
   user-to-employee-to-doctor mapping is not enforced.
+- Medical Records and Prescriptions currently authorize `medical_record.*`,
+  `prescription.*`, and `medicine.read` as documented in
+  `docs/development/medical-records.md`. Clinical writes derive employee/doctor
+  identity from the database; they do not trust client-supplied author IDs and do
+  not put employee or doctor identity into the JWT.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

@@ -32,4 +32,13 @@ export const PERMISSIONS = {
   appointmentCancel: 'appointment.cancel',
   appointmentReschedule: 'appointment.reschedule',
   appointmentStatusUpdate: 'appointment.status.update',
+  medicalRecordRead: 'medical_record.read',
+  medicalRecordCreate: 'medical_record.create',
+  medicalRecordUpdate: 'medical_record.update',
+  medicalRecordFinalize: 'medical_record.finalize',
+  medicalRecordAmend: 'medical_record.amend',
+  prescriptionRead: 'prescription.read',
+  prescriptionCreate: 'prescription.create',
+  prescriptionCancel: 'prescription.cancel',
+  medicineRead: 'medicine.read',
 } as const

@@ -38,6 +38,15 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.appointmentCancel, 'Cancel eligible appointments.'],
   [PERMISSIONS.appointmentReschedule, 'Reschedule eligible appointments.'],
   [PERMISSIONS.appointmentStatusUpdate, 'Apply approved appointment status transitions.'],
+  [PERMISSIONS.medicalRecordRead, 'Read medical records and draft/final clinical children.'],
+  [PERMISSIONS.medicalRecordCreate, 'Create draft medical records for a linked employee author.'],
+  [PERMISSIONS.medicalRecordUpdate, 'Update draft medical records and replace draft clinical children.'],
+  [PERMISSIONS.medicalRecordFinalize, 'Finalize draft medical records.'],
+  [PERMISSIONS.medicalRecordAmend, 'Amend a finalized medical record with a linked successor.'],
+  [PERMISSIONS.prescriptionRead, 'Read prescriptions and prescription items.'],
+  [PERMISSIONS.prescriptionCreate, 'Create prescriptions from finalized medical records.'],
+  [PERMISSIONS.prescriptionCancel, 'Cancel active prescriptions.'],
+  [PERMISSIONS.medicineRead, 'Read the active medicine catalog for prescribing.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -68,6 +77,8 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.appointmentCancel,
     PERMISSIONS.appointmentReschedule,
     PERMISSIONS.appointmentStatusUpdate,
+    PERMISSIONS.medicalRecordRead,
+    PERMISSIONS.prescriptionRead,
   ],
   receptionist: [
     PERMISSIONS.identitySelfRead,
@@ -91,11 +102,22 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.patientRead,
     PERMISSIONS.doctorRead,
     PERMISSIONS.doctorScheduleRead,
+    PERMISSIONS.medicalRecordRead,
+    PERMISSIONS.medicalRecordCreate,
+    PERMISSIONS.medicalRecordUpdate,
+    PERMISSIONS.medicalRecordFinalize,
+    PERMISSIONS.medicalRecordAmend,
+    PERMISSIONS.prescriptionRead,
+    PERMISSIONS.prescriptionCreate,
+    PERMISSIONS.prescriptionCancel,
+    PERMISSIONS.medicineRead,
   ],
   nurse: [
     PERMISSIONS.identitySelfRead,
     PERMISSIONS.identityPasswordChange,
     PERMISSIONS.patientRead,
+    PERMISSIONS.medicalRecordRead,
+    PERMISSIONS.prescriptionRead,
   ],
   laboratory_staff: [
     PERMISSIONS.identitySelfRead,
@@ -104,6 +126,7 @@ export const ROLE_PERMISSION_CODES: Record<
   pharmacist: [
     PERMISSIONS.identitySelfRead,
     PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.prescriptionRead,
   ],
   accountant: [
     PERMISSIONS.identitySelfRead,

@@ -151,6 +151,30 @@ updates `reason` only. Booking and rescheduling require an active doctor profile
 active employment status; patient existence is sufficient. There is no default
 duration and no past-booking prohibition.
 
+### D-022 — Medical records and prescriptions authorization and workflow
+
+Administrator receives `medical_record.read` and `prescription.read` only.
+Doctor receives medical-record read/create/update/finalize/amend, prescription
+read/create/cancel, and `medicine.read`. Nurse receives medical-record and
+prescription read. Pharmacist receives `prescription.read`. Receptionist,
+Laboratory Staff, and Accountant receive no medical-record or prescription
+permissions. Diagnosis, treatment, and report writes use the parent medical-record
+permissions. `patient.read` is not medical-record access.
+
+Clinical author identity uses D1: the server derives `author_employee_id` from
+`users.id` → `employees.user_id`, and `prescribed_by_doctor_id` from that employee’s
+active doctor profile with active employment. Client-supplied author or prescriber
+IDs are rejected. Identity is not added to the JWT in this milestone.
+
+Medical-record statuses: `draft` → `final`; `final` → `amended` through amendment.
+Draft children may be replaced. Final/amended content is immutable. Amendment
+creates a finalized successor, marks the predecessor `amended`, preserves
+predecessor content, requires the same patient and a later `occurred_at`, and
+allows chains. Care context remains optional (C1). Prescriptions require a final
+medical record, at least one item, canonical medicine units, and start as `active`.
+The only prescription transition in this milestone is `active` → `cancelled`.
+Medicine catalog access is read-only for active medicines.
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:

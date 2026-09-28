@@ -40,6 +40,16 @@ const navigation = [
     permission: 'appointment.read',
   },
   {
+    label: 'Medical records',
+    path: '/medical-records',
+    permission: 'medical_record.read',
+  },
+  {
+    label: 'Prescriptions',
+    path: '/prescriptions',
+    permission: 'prescription.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

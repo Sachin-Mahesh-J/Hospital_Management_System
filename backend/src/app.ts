@@ -19,7 +19,10 @@ import { appointmentRouter } from './modules/appointments/appointment.routes.js'
 import { doctorRouter } from './modules/doctors/doctor.routes.js'
 import { employeeRouter } from './modules/employees/employee.routes.js'
 import { healthRouter } from './modules/health/health.routes.js'
+import { medicalRecordRouter } from './modules/medical-records/medical-record.routes.js'
+import { medicineRouter } from './modules/medicines/medicine.routes.js'
 import { patientRouter } from './modules/patients/patient.routes.js'
+import { prescriptionRouter } from './modules/prescriptions/prescription.routes.js'
 
 export function createApp() {
   const app = express()
@@ -67,6 +70,9 @@ export function createApp() {
   app.use('/api/v1/employees', employeeRouter)
   app.use('/api/v1/doctors', doctorRouter)
   app.use('/api/v1/appointments', appointmentRouter)
+  app.use('/api/v1/medical-records', medicalRecordRouter)
+  app.use('/api/v1/prescriptions', prescriptionRouter)
+  app.use('/api/v1/medicines', medicineRouter)
   app.get('/api/v1/openapi.json', (_request, response) => {
     response.json(openApiDocument)
   })

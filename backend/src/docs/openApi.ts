@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.5.0',
+    version: '0.6.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -656,6 +656,209 @@ export const openApiDocument = {
         },
       },
     },
+    '/api/v1/medical-records': {
+      get: {
+        summary: 'List medical records',
+        description: 'Requires medical_record.read. List responses omit diagnosis, treatment, and report bodies.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'authorEmployeeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/MedicalRecordStatus' } },
+          { name: 'occurredAtFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'occurredAtTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['occurredAt', 'createdAt', 'status'], default: 'occurredAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated medical records.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Create a draft medical record',
+        description: 'Requires medical_record.create. authorEmployeeId is derived from the authenticated user employee link and cannot be supplied by the client. Status is draft.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateMedicalRecordRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Draft medical record created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordDetailResponse' } } } },
+          '400': { description: 'Invalid medical record data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient, appointment, or admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Missing employee mapping or care-context patient mismatch.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/medical-records/{id}': {
+      get: {
+        summary: 'Get a medical record',
+        description: 'Requires medical_record.read. patient.read is not sufficient.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Medical record detail including clinical children.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordDetailResponse' } } } },
+          '400': { description: 'Invalid medical record ID.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medical record not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      patch: {
+        summary: 'Update a draft medical record',
+        description: 'Requires medical_record.update. Allowed only while status is draft. Patient and author cannot be changed. Clinical children are replaced when supplied. Final and amended records cannot be patched.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateMedicalRecordRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Draft medical record updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordDetailResponse' } } } },
+          '400': { description: 'Invalid medical record data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medical record, appointment, or admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Record is not draft or care-context patient mismatch.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/medical-records/{id}/finalize': {
+      post: {
+        summary: 'Finalize a draft medical record',
+        description: 'Requires medical_record.finalize. Allowed only from draft. At least one diagnosis, treatment, or medical report is required. finalizedAt is set by the server.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Medical record finalized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordDetailResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.finalize is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medical record not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Not draft, empty clinical content, or missing employee mapping.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/medical-records/{id}/amend': {
+      post: {
+        summary: 'Amend a finalized medical record',
+        description: 'Requires medical_record.amend. The predecessor becomes amended and a finalized successor is created in one transaction. Amendment reason is stored in audit metadata only.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AmendMedicalRecordRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Successor medical record created and finalized.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicalRecordDetailResponse' } } } },
+          '400': { description: 'Invalid amendment data or occurredAt not later than the predecessor.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medical_record.amend is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medical record, appointment, or admission not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Not final, duplicate successor, empty clinical content, cycle, patient mismatch, or missing employee mapping.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/prescriptions': {
+      get: {
+        summary: 'List prescriptions',
+        description: 'Requires prescription.read. List responses omit item directions.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'medicalRecordId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/PrescriptionStatus' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['prescribedAt', 'createdAt', 'status'], default: 'prescribedAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated prescriptions.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Create a prescription',
+        description: 'Requires prescription.create. The medical record must be final. prescribedByDoctorId and patientId are derived server-side. Parent and at least one item are created atomically. Status is active. There is no item PATCH.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreatePrescriptionRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Prescription created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionDetailResponse' } } } },
+          '400': { description: 'Invalid prescription data or unit mismatch.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Medical record or medicine not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Medical record is not final, medicine inactive, or doctor identity mapping missing/inactive.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/prescriptions/{id}': {
+      get: {
+        summary: 'Get a prescription',
+        description: 'Requires prescription.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Prescription detail including items.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionDetailResponse' } } } },
+          '400': { description: 'Invalid prescription ID.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Prescription not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/prescriptions/{id}/cancel': {
+      post: {
+        summary: 'Cancel an active prescription',
+        description: 'Requires prescription.cancel. Allowed only from active. The prescription is retained. Cancellation reason is stored in audit metadata. Pharmacy dispense states are not changed by this module.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CancelPrescriptionRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Prescription cancelled.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PrescriptionDetailResponse' } } } },
+          '400': { description: 'Invalid cancellation data.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'prescription.cancel is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Prescription not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Prescription is not active.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/medicines': {
+      get: {
+        summary: 'List active medicines for prescribing',
+        description: 'Requires medicine.read. Returns only active medicines. This is not pharmacy inventory management.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['code', 'genericName'], default: 'genericName' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated active medicines.', content: { 'application/json': { schema: { $ref: '#/components/schemas/MedicineListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'medicine.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -1184,6 +1387,342 @@ export const openApiDocument = {
         required: ['data', 'meta'],
         properties: {
           data: { type: 'array', items: { $ref: '#/components/schemas/Appointment' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      MedicalRecordStatus: {
+        type: 'string',
+        enum: ['draft', 'final', 'amended'],
+      },
+      DiagnosisInput: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['diagnosisText'],
+        properties: { diagnosisText: { type: 'string', minLength: 1, maxLength: 10000 } },
+      },
+      TreatmentInput: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['treatmentText'],
+        properties: { treatmentText: { type: 'string', minLength: 1, maxLength: 10000 } },
+      },
+      MedicalReportInput: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'reportText'],
+        properties: {
+          title: { type: 'string', minLength: 1, maxLength: 200 },
+          reportText: { type: 'string', minLength: 1, maxLength: 20000 },
+        },
+      },
+      MedicalRecordListItem: {
+        type: 'object',
+        required: ['id', 'patientId', 'authorEmployeeId', 'appointmentId', 'admissionId', 'occurredAt', 'status', 'finalizedAt', 'amendsMedicalRecordId', 'createdAt', 'updatedAt', 'patient', 'author'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          patientId: { type: 'string', format: 'uuid' },
+          authorEmployeeId: { type: 'string', format: 'uuid' },
+          appointmentId: { type: ['string', 'null'], format: 'uuid' },
+          admissionId: { type: ['string', 'null'], format: 'uuid' },
+          occurredAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/MedicalRecordStatus' },
+          finalizedAt: { type: ['string', 'null'], format: 'date-time' },
+          amendsMedicalRecordId: { type: ['string', 'null'], format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          patient: {
+            type: 'object',
+            required: ['id', 'patientNumber', 'firstName', 'lastName', 'status'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              patientNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              status: { $ref: '#/components/schemas/PatientStatus' },
+            },
+          },
+          author: {
+            type: 'object',
+            required: ['id', 'employeeNumber', 'firstName', 'lastName', 'employmentStatus'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              employeeNumber: { type: 'string' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              employmentStatus: { $ref: '#/components/schemas/EmploymentStatus' },
+            },
+          },
+        },
+      },
+      MedicalRecordDetail: {
+        allOf: [
+          { $ref: '#/components/schemas/MedicalRecordListItem' },
+          {
+            type: 'object',
+            required: ['diagnoses', 'treatments', 'reports', 'appointment', 'admission', 'amends', 'amendedBy'],
+            properties: {
+              diagnoses: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'diagnosisText', 'createdAt'],
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    diagnosisText: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+              treatments: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'treatmentText', 'createdAt'],
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    treatmentText: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+              reports: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'title', 'reportText', 'createdAt'],
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    title: { type: 'string' },
+                    reportText: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+              appointment: {
+                type: ['object', 'null'],
+                required: ['id', 'status', 'startsAt', 'endsAt'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  status: { $ref: '#/components/schemas/AppointmentStatus' },
+                  startsAt: { type: 'string', format: 'date-time' },
+                  endsAt: { type: 'string', format: 'date-time' },
+                },
+              },
+              admission: {
+                type: ['object', 'null'],
+                required: ['id', 'admissionNumber', 'status', 'admittedAt'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  admissionNumber: { type: 'string' },
+                  status: { type: 'string' },
+                  admittedAt: { type: 'string', format: 'date-time' },
+                },
+              },
+              amends: {
+                type: ['object', 'null'],
+                required: ['id', 'status', 'occurredAt'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  status: { $ref: '#/components/schemas/MedicalRecordStatus' },
+                  occurredAt: { type: 'string', format: 'date-time' },
+                },
+              },
+              amendedBy: {
+                type: ['object', 'null'],
+                required: ['id', 'status', 'occurredAt'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  status: { $ref: '#/components/schemas/MedicalRecordStatus' },
+                  occurredAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        ],
+      },
+      CreateMedicalRecordRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['patientId', 'occurredAt'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid' },
+          occurredAt: { type: 'string', format: 'date-time' },
+          appointmentId: { type: ['string', 'null'], format: 'uuid' },
+          admissionId: { type: ['string', 'null'], format: 'uuid' },
+          diagnoses: { type: 'array', items: { $ref: '#/components/schemas/DiagnosisInput' } },
+          treatments: { type: 'array', items: { $ref: '#/components/schemas/TreatmentInput' } },
+          reports: { type: 'array', items: { $ref: '#/components/schemas/MedicalReportInput' } },
+        },
+      },
+      UpdateMedicalRecordRequest: {
+        type: 'object',
+        additionalProperties: false,
+        minProperties: 1,
+        properties: {
+          occurredAt: { type: 'string', format: 'date-time' },
+          appointmentId: { type: ['string', 'null'], format: 'uuid' },
+          admissionId: { type: ['string', 'null'], format: 'uuid' },
+          diagnoses: { type: 'array', items: { $ref: '#/components/schemas/DiagnosisInput' } },
+          treatments: { type: 'array', items: { $ref: '#/components/schemas/TreatmentInput' } },
+          reports: { type: 'array', items: { $ref: '#/components/schemas/MedicalReportInput' } },
+        },
+      },
+      AmendMedicalRecordRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['occurredAt', 'reason'],
+        properties: {
+          occurredAt: { type: 'string', format: 'date-time' },
+          appointmentId: { type: ['string', 'null'], format: 'uuid' },
+          admissionId: { type: ['string', 'null'], format: 'uuid' },
+          diagnoses: { type: 'array', items: { $ref: '#/components/schemas/DiagnosisInput' } },
+          treatments: { type: 'array', items: { $ref: '#/components/schemas/TreatmentInput' } },
+          reports: { type: 'array', items: { $ref: '#/components/schemas/MedicalReportInput' } },
+          reason: { type: 'string', minLength: 1, maxLength: 500 },
+        },
+      },
+      MedicalRecordDetailResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/MedicalRecordDetail' } },
+      },
+      MedicalRecordListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/MedicalRecordListItem' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      PrescriptionStatus: {
+        type: 'string',
+        enum: ['active', 'partially_dispensed', 'dispensed', 'cancelled', 'expired'],
+      },
+      PrescriptionItemInput: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['medicineId', 'dosage', 'frequency', 'duration', 'quantityPrescribed', 'unit'],
+        properties: {
+          medicineId: { type: 'string', format: 'uuid' },
+          dosage: { type: 'string', minLength: 1, maxLength: 100 },
+          route: { type: ['string', 'null'], maxLength: 50 },
+          frequency: { type: 'string', minLength: 1, maxLength: 100 },
+          duration: { type: 'string', minLength: 1, maxLength: 100 },
+          instructions: { type: ['string', 'null'], maxLength: 2000 },
+          quantityPrescribed: { type: ['number', 'string'] },
+          unit: { type: 'string', minLength: 1, maxLength: 30 },
+        },
+      },
+      CreatePrescriptionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['medicalRecordId', 'items'],
+        properties: {
+          medicalRecordId: { type: 'string', format: 'uuid' },
+          notes: { type: ['string', 'null'], maxLength: 2000 },
+          items: { type: 'array', minItems: 1, items: { $ref: '#/components/schemas/PrescriptionItemInput' } },
+        },
+      },
+      CancelPrescriptionRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['cancellationReason'],
+        properties: {
+          cancellationReason: { type: 'string', minLength: 1, maxLength: 500 },
+        },
+      },
+      PrescriptionListItem: {
+        type: 'object',
+        required: ['id', 'medicalRecordId', 'patientId', 'prescribedByDoctorId', 'prescribedAt', 'status', 'notes', 'createdAt', 'updatedAt', 'patient', 'prescribedBy', 'itemCount'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          medicalRecordId: { type: 'string', format: 'uuid' },
+          patientId: { type: 'string', format: 'uuid' },
+          prescribedByDoctorId: { type: 'string', format: 'uuid' },
+          prescribedAt: { type: 'string', format: 'date-time' },
+          status: { $ref: '#/components/schemas/PrescriptionStatus' },
+          notes: { type: ['string', 'null'] },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          itemCount: { type: 'integer' },
+          patient: { $ref: '#/components/schemas/MedicalRecordListItem/properties/patient' },
+          prescribedBy: {
+            type: 'object',
+            required: ['id', 'licenseNumber', 'specialization', 'status', 'employee'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              licenseNumber: { type: 'string' },
+              specialization: { type: 'string' },
+              status: { $ref: '#/components/schemas/DoctorStatus' },
+              employee: { $ref: '#/components/schemas/MedicalRecordListItem/properties/author' },
+            },
+          },
+        },
+      },
+      PrescriptionDetail: {
+        allOf: [
+          { $ref: '#/components/schemas/PrescriptionListItem' },
+          {
+            type: 'object',
+            required: ['items'],
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['id', 'medicineId', 'dosage', 'route', 'frequency', 'duration', 'instructions', 'quantityPrescribed', 'unit', 'createdAt', 'updatedAt', 'medicine'],
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    medicineId: { type: 'string', format: 'uuid' },
+                    dosage: { type: 'string' },
+                    route: { type: ['string', 'null'] },
+                    frequency: { type: 'string' },
+                    duration: { type: 'string' },
+                    instructions: { type: ['string', 'null'] },
+                    quantityPrescribed: { type: 'string' },
+                    unit: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                    medicine: { $ref: '#/components/schemas/MedicineCatalogItem' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      PrescriptionDetailResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/PrescriptionDetail' } },
+      },
+      PrescriptionListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/PrescriptionListItem' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      MedicineCatalogItem: {
+        type: 'object',
+        required: ['id', 'code', 'genericName', 'brandName', 'dosageForm', 'strength', 'inventoryUnit', 'status'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          code: { type: 'string' },
+          genericName: { type: 'string' },
+          brandName: { type: ['string', 'null'] },
+          dosageForm: { type: 'string' },
+          strength: { type: ['string', 'null'] },
+          inventoryUnit: { type: 'string' },
+          status: { type: 'string', enum: ['active', 'inactive'] },
+        },
+      },
+      MedicineListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/MedicineCatalogItem' } },
           meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
         },
       },

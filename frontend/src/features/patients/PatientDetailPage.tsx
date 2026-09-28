@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { Page } from '../../shared/components/Page'
 import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { useMedicalRecords } from '../medical-records/hooks'
 import { usePatient } from './hooks'
 
 function Detail({ label, value }: { label: string; value: string | null }) {
@@ -12,6 +13,41 @@ function Detail({ label, value }: { label: string; value: string | null }) {
       <Typography color="text.secondary" variant="body2">{label}</Typography>
       <Typography>{value || 'Not recorded'}</Typography>
     </Stack>
+  )
+}
+
+function PatientMedicalHistory({ patientId }: { patientId: string }) {
+  const query = useMedicalRecords({ page: 1, pageSize: 10, patientId })
+  if (query.isLoading) return <LoadingState label="Loading medical history" />
+  if (query.isError) {
+    return (
+      <ErrorState
+        message={query.error instanceof ApiError ? query.error.message : 'Medical history could not be loaded.'}
+        onRetry={() => void query.refetch()}
+      />
+    )
+  }
+  const records = query.data?.data ?? []
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Typography component="h2" variant="h6" gutterBottom>Medical history</Typography>
+      {records.length === 0 ? (
+        <Typography color="text.secondary">No medical records for this patient.</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {records.map((record) => (
+            <Button
+              component={Link}
+              key={record.id}
+              sx={{ justifyContent: 'flex-start' }}
+              to={`/medical-records/${record.id}`}
+            >
+              {new Date(record.occurredAt).toLocaleString()} — {record.status}
+            </Button>
+          ))}
+        </Stack>
+      )}
+    </Paper>
   )
 }
 
@@ -67,9 +103,16 @@ export function PatientDetailPage() {
           </Stack>
         </Stack>
       </Paper>
-      <Alert severity="info">
-        Medical history will be available in the Medical Records module.
-      </Alert>
+      <Can
+        fallback={
+          <Alert severity="info">
+            Medical history requires medical-record access. Patient demographic permission is not sufficient.
+          </Alert>
+        }
+        permission="medical_record.read"
+      >
+        <PatientMedicalHistory patientId={patient.id} />
+      </Can>
       <Alert severity="info">
         Patient document upload is deferred until the storage architecture is approved.
       </Alert>

@@ -5,10 +5,9 @@ TypeScript, Material UI, Node.js, Express, Prisma, and PostgreSQL.
 
 ## Milestone status
 
-Milestone 8 adds appointment booking, cancellation, rescheduling, and status
-tracking on top of Patient and Organization Management. Recurrence, reminders,
-Doctor/Nurse assigned-appointment access, and hospital-timezone calendar views
-remain deferred.
+Milestone 9 adds medical records, diagnoses, treatments, reports, and
+prescriptions on top of Appointment Management. Laboratory, pharmacy inventory,
+dispensing, billing, and admissions management remain deferred.
 
 The primary requirements source remains `Hospital_system.pdf`. Approved planning and
 architecture documents are under `docs/`.
@@ -174,7 +173,9 @@ accesses Prisma. Patient API, permissions, query keys, and deferred scope are do
 in `docs/development/patient-management.md`. Organization, staff, doctor, and schedule
 APIs are documented in `docs/development/organization-management.md`. Appointment
 booking, cancellation, rescheduling, and status transitions are documented in
-`docs/development/appointment-management.md`.
+`docs/development/appointment-management.md`. Medical records, clinical children,
+prescriptions, and the read-only medicine catalog are documented in
+`docs/development/medical-records.md`.
 
 ## Approved stack
 
