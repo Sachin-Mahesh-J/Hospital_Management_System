@@ -52,4 +52,12 @@ export const PERMISSIONS = {
   labRequestCreate: 'lab_request.create',
   labSampleCollect: 'lab_sample.collect',
   labResultEnter: 'lab_result.enter',
+  invoiceRead: 'invoice.read',
+  invoiceCreate: 'invoice.create',
+  invoiceUpdate: 'invoice.update',
+  invoiceIssue: 'invoice.issue',
+  invoiceVoid: 'invoice.void',
+  paymentRead: 'payment.read',
+  paymentCreate: 'payment.create',
+  paymentReverse: 'payment.reverse',
 } as const

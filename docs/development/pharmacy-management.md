@@ -190,5 +190,7 @@ The following remain unresolved and are not implemented:
   schema
 - Waitlists, backorders, and reservations
 - Billing invoice items, payments, taxes, discounts, and financial reversal
+  (implemented separately by Milestone 12 / D-025; pharmacy stock reversal still
+  does not reverse invoices)
 - Pharmacy revenue reports and exports
 - Automatic prescription expiry

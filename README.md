@@ -60,6 +60,7 @@ Backend:
   cookie.
 - `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
 - `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry boundaries.
+- `DEFAULT_CURRENCY` — ISO 4217 currency used for every invoice and payment.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret
 configuration.
@@ -179,7 +180,10 @@ booking, cancellation, rescheduling, and status transitions are documented in
 prescriptions, and the read-only medicine catalog are documented in
 `docs/development/medical-records.md`. Laboratory requests, sample collection,
 result entry, and printable reports are documented in
-`docs/development/laboratory-management.md`.
+`docs/development/laboratory-management.md`. Pharmacy inventory, receiving,
+adjustments, movements, dispensing, and reversal are documented in
+`docs/development/pharmacy-management.md`. Billing invoices, payments, and
+printable receipts are documented in `docs/development/billing-management.md`.
 
 ## Approved stack
 

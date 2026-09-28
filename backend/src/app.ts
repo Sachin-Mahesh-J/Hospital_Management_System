@@ -25,6 +25,11 @@ import { medicineRouter } from './modules/medicines/medicine.routes.js'
 import { patientRouter } from './modules/patients/patient.routes.js'
 import { pharmacyRouter } from './modules/pharmacy/pharmacy.routes.js'
 import { prescriptionRouter } from './modules/prescriptions/prescription.routes.js'
+import {
+  billingLookupRouter,
+  invoiceRouter,
+  paymentRouter,
+} from './modules/billing/billing.routes.js'
 
 export function createApp() {
   const app = express()
@@ -77,6 +82,9 @@ export function createApp() {
   app.use('/api/v1/medicines', medicineRouter)
   app.use('/api/v1/lab', laboratoryRouter)
   app.use('/api/v1/pharmacy', pharmacyRouter)
+  app.use('/api/v1/billing', billingLookupRouter)
+  app.use('/api/v1/invoices', invoiceRouter)
+  app.use('/api/v1/payments', paymentRouter)
   app.get('/api/v1/openapi.json', (_request, response) => {
     response.json(openApiDocument)
   })

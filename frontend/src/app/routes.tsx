@@ -40,6 +40,10 @@ import { InventoryListPage } from '../features/pharmacy/InventoryListPage'
 import { StockAdjustPage } from '../features/pharmacy/StockAdjustPage'
 import { StockMovementListPage } from '../features/pharmacy/StockMovementListPage'
 import { StockReceivePage } from '../features/pharmacy/StockReceivePage'
+import { InvoiceCreatePage } from '../features/billing/InvoiceCreatePage'
+import { InvoiceDetailPage } from '../features/billing/InvoiceDetailPage'
+import { InvoiceListPage } from '../features/billing/InvoiceListPage'
+import { PaymentReceiptPage } from '../features/billing/PaymentReceiptPage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
@@ -275,6 +279,30 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="stock.movement.read" />,
                     children: [
                       { path: 'movements', element: <StockMovementListPage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'billing',
+                children: [
+                  {
+                    element: <PermissionRoute permission="invoice.read" />,
+                    children: [
+                      { index: true, element: <InvoiceListPage /> },
+                      { path: ':invoiceId', element: <InvoiceDetailPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="invoice.create" />,
+                    children: [
+                      { path: 'new', element: <InvoiceCreatePage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="payment.read" />,
+                    children: [
+                      { path: ':invoiceId/payments/:paymentId', element: <PaymentReceiptPage /> },
                     ],
                   },
                 ],

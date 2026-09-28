@@ -15,6 +15,8 @@ describe('logger redaction', () => {
         '*.referenceRangeSnapshot',
         'req.body.note',
         'req.body.reason',
+        'req.body.cardNumber',
+        'req.body.cvv',
       ]),
     )
   })

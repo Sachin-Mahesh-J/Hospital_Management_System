@@ -46,6 +46,9 @@ const environmentSchema = z
         return false
       }
     }, 'must be a valid IANA time zone'),
+  DEFAULT_CURRENCY: z
+    .string()
+    .regex(/^[A-Z]{3}$/, 'must be a 3-letter ISO 4217 currency code'),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'test' && !value.TEST_DATABASE_URL) {
@@ -83,6 +86,7 @@ export type AppConfig = {
   }
   hospital: {
     timezone: string
+    defaultCurrency: string
   }
 }
 
@@ -141,6 +145,7 @@ export function loadEnvironment(
     },
     hospital: {
       timezone: result.data.HOSPITAL_TIMEZONE,
+      defaultCurrency: result.data.DEFAULT_CURRENCY,
     },
   }
 }

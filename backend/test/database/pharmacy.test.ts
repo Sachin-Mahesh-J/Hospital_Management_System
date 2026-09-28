@@ -767,7 +767,7 @@ describe('pharmacy inventory and dispensing', () => {
     expect((await authorized('patch', `/api/v1/medicines/${activeMedicineId}`, 'pharmacist').send({
       status: 'inactive',
     })).status).toBe(404)
-    expect((await authorized('post', '/api/v1/invoices', 'pharmacist').send({})).status).toBe(404)
+    expect((await authorized('post', '/api/v1/invoices', 'pharmacist').send({})).status).toBe(403)
     expect((await authorized('get', '/api/v1/pharmacy/reports', 'administrator')).status).toBe(404)
   })
 })

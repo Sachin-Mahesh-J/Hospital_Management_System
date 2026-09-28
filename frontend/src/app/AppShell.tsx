@@ -65,6 +65,11 @@ const navigation = [
     permission: 'stock.movement.read',
   },
   {
+    label: 'Billing',
+    path: '/billing',
+    permission: 'invoice.read',
+  },
+  {
     label: 'Change password',
     path: '/change-password',
     permission: 'identity.password.change',

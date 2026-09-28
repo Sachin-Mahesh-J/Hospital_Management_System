@@ -58,7 +58,7 @@ Status meanings:
 | Prevent cross-patient billing | Financial/privacy integrity | Transaction validates every line source belongs to invoice patient | COVERED |
 | Record partial payments | PDF 3.8; D-016 | Invoice 1:M `payments`; controlled stored balance | COVERED |
 | Reverse payments | D-016 technical integrity | Self-linked payment reversal and original status | COVERED |
-| Print payment receipt | PDF UI, Billing Screen | Payment/invoice identifiers and snapshots provide receipt data | PARTIALLY COVERED |
+| Print payment receipt | PDF UI, Billing Screen | Payment/invoice identifiers and on-screen printable receipt | COVERED |
 | Inpatient management | PDF scope/modules | Minimal `admissions` lifecycle and medical-record context | COVERED |
 | Outpatient management | PDF scope; D-009 | Appointments plus contextual medical records | COVERED |
 | Bed/ward/room management | Not specified; D-009 excludes | No tables | NOT APPLICABLE |

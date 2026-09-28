@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.8.0',
+    version: '0.9.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -1108,6 +1108,224 @@ export const openApiDocument = {
           '403': { description: 'prescription.reverse is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '404': { description: 'Prescription or dispense was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '409': { description: 'Dispense already reversed or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/billing/patients': {
+      get: {
+        summary: 'Search billing-safe patients',
+        description: 'Requires invoice.read. Returns patient id, number, and name only. This is not patient.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated billing-safe patients.', content: { 'application/json': { schema: { $ref: '#/components/schemas/BillingPatientListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/billing/patients/{patientId}/consultations': {
+      get: {
+        summary: 'List completed appointments eligible for consultation billing',
+        description: 'Requires invoice.read. Does not expose appointment reason or clinical notes.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Completed appointments for the patient.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ConsultationSourceResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/billing/patients/{patientId}/laboratory-items': {
+      get: {
+        summary: 'List completed laboratory items with billable catalog prices',
+        description: 'Requires invoice.read. Result values are not returned. Identifies whether the item is already billed on a non-void invoice.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Billable laboratory items.', content: { 'application/json': { schema: { $ref: '#/components/schemas/LaboratorySourceResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/billing/patients/{patientId}/dispenses': {
+      get: {
+        summary: 'List unreversed pharmacy dispenses eligible for billing',
+        description: 'Requires invoice.read. Preview unit price is the server-calculated weighted average. Identifies whether the dispense is already billed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Billable dispenses.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PharmacySourceResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/invoices': {
+      get: {
+        summary: 'List invoices',
+        description: 'Requires invoice.read. Returns billing-safe invoice summaries.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
+          { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/InvoiceStatus' } },
+          { name: 'patientId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['invoiceNumber', 'issuedAt', 'status', 'totalAmount', 'createdAt'], default: 'createdAt' } },
+          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated invoices.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceListResponse' } } } },
+          '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Create a draft invoice',
+        description: 'Requires invoice.create. Server generates invoice number, currency, prices except consultation unit price, and totals. Tax and discount remain zero.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateInvoiceRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Draft invoice created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceDetailResponse' } } } },
+          '400': { description: 'Invalid invoice input.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Patient or billable source was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Ineligible source, duplicate laboratory/pharmacy billing, patient mismatch, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/invoices/{id}': {
+      get: {
+        summary: 'Get billing-safe invoice details',
+        description: 'Requires invoice.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Invoice detail.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceDetailResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      patch: {
+        summary: 'Update a draft invoice',
+        description: 'Requires invoice.update. Issued, paid, and void invoices are immutable.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateInvoiceRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Draft invoice updated.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceDetailResponse' } } } },
+          '400': { description: 'Invalid invoice input.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.update is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice or billable source was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Invoice is not a draft, source conflict, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/invoices/{id}/issue': {
+      post: {
+        summary: 'Issue a draft invoice',
+        description: 'Requires invoice.issue. Re-validates billable sources and makes the invoice financially immutable.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Invoice issued.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceDetailResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.issue is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Invoice is not a draft, a source is no longer billable, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/invoices/{id}/void': {
+      post: {
+        summary: 'Void an invoice',
+        description: 'Requires invoice.void. A reason is required and stored in audit metadata. Partially paid and paid invoices can be voided only after every effective payment is reversed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/VoidInvoiceRequest' } } },
+        },
+        responses: {
+          '200': { description: 'Invoice voided.', content: { 'application/json': { schema: { $ref: '#/components/schemas/InvoiceDetailResponse' } } } },
+          '400': { description: 'Void reason is missing or invalid.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'invoice.void is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Invoice already void, outstanding payments remain, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/invoices/{id}/payments': {
+      get: {
+        summary: 'List payments for an invoice',
+        description: 'Requires payment.read.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Invoice payments.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaymentListResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'payment.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Record a payment',
+        description: 'Requires payment.create. Amount must be greater than zero and not exceed the remaining balance. Receiver identity is the authenticated user. Payment number and timestamp are server-generated.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreatePaymentRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Payment recorded.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaymentResponse' } } } },
+          '400': { description: 'Invalid payment input.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'payment.create is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Invoice was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Invoice is not payable, overpayment, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/payments/{id}/reverse': {
+      post: {
+        summary: 'Fully reverse a recorded payment',
+        description: 'Requires payment.reverse. Creates a linked reversal payment with a required reason. Partial reversal is not allowed. Stock, laboratory results, and appointments are not reversed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ReversePaymentRequest' } } },
+        },
+        responses: {
+          '201': { description: 'Reversal payment created.', content: { 'application/json': { schema: { $ref: '#/components/schemas/PaymentResponse' } } } },
+          '400': { description: 'Reversal reason is missing or invalid.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '403': { description: 'payment.reverse is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Payment was not found.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '409': { description: 'Payment already reversed, reversal of a reversal, or concurrent conflict.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
         },
       },
     },
@@ -2295,6 +2513,275 @@ export const openApiDocument = {
             },
           },
           dispensedBy: { $ref: '#/components/schemas/LabEmployeeSummary' },
+        },
+      },
+      InvoiceStatus: {
+        type: 'string',
+        enum: ['draft', 'issued', 'partially_paid', 'paid', 'void'],
+      },
+      PaymentMethod: {
+        type: 'string',
+        enum: ['cash', 'card', 'bank_transfer'],
+      },
+      BillingPatient: {
+        type: 'object',
+        required: ['id', 'patientNumber', 'firstName', 'lastName', 'displayName'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          patientNumber: { type: 'string' },
+          firstName: { type: 'string' },
+          lastName: { type: 'string' },
+          displayName: { type: 'string' },
+        },
+      },
+      BillingActor: {
+        type: 'object',
+        required: ['id', 'username'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          username: { type: 'string' },
+        },
+      },
+      InvoiceItem: {
+        type: 'object',
+        required: ['id', 'category', 'description', 'quantity', 'unitPrice', 'lineTotal', 'appointmentId', 'labRequestItemId', 'dispenseRecordId', 'createdAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          category: { type: 'string', enum: ['consultation', 'laboratory', 'pharmacy'] },
+          description: { type: 'string' },
+          quantity: { type: 'string' },
+          unitPrice: { type: 'string' },
+          lineTotal: { type: 'string' },
+          appointmentId: { type: ['string', 'null'], format: 'uuid' },
+          labRequestItemId: { type: ['string', 'null'], format: 'uuid' },
+          dispenseRecordId: { type: ['string', 'null'], format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      Payment: {
+        type: 'object',
+        required: ['id', 'paymentNumber', 'invoiceId', 'amount', 'currency', 'method', 'externalReference', 'status', 'paidAt', 'note', 'reversesPaymentId', 'createdAt', 'receivedBy'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          paymentNumber: { type: 'string' },
+          invoiceId: { type: 'string', format: 'uuid' },
+          amount: { type: 'string' },
+          currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+          method: { $ref: '#/components/schemas/PaymentMethod' },
+          externalReference: { type: ['string', 'null'] },
+          status: { type: 'string', enum: ['recorded', 'reversed'] },
+          paidAt: { type: 'string', format: 'date-time' },
+          note: { type: ['string', 'null'] },
+          reversesPaymentId: { type: ['string', 'null'], format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+          receivedBy: { $ref: '#/components/schemas/BillingActor' },
+        },
+      },
+      InvoiceListItem: {
+        type: 'object',
+        required: ['id', 'invoiceNumber', 'patient', 'issuedAt', 'currency', 'subtotal', 'discountAmount', 'taxAmount', 'totalAmount', 'amountPaid', 'balanceAmount', 'status', 'createdAt', 'updatedAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          invoiceNumber: { type: 'string' },
+          patient: { $ref: '#/components/schemas/BillingPatient' },
+          issuedAt: { type: 'string', format: 'date-time' },
+          currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+          subtotal: { type: 'string' },
+          discountAmount: { type: 'string' },
+          taxAmount: { type: 'string' },
+          totalAmount: { type: 'string' },
+          amountPaid: { type: 'string' },
+          balanceAmount: { type: 'string' },
+          status: { $ref: '#/components/schemas/InvoiceStatus' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      InvoiceDetail: {
+        allOf: [
+          { $ref: '#/components/schemas/InvoiceListItem' },
+          {
+            type: 'object',
+            required: ['createdBy', 'items', 'payments'],
+            properties: {
+              createdBy: { $ref: '#/components/schemas/BillingActor' },
+              items: { type: 'array', items: { $ref: '#/components/schemas/InvoiceItem' } },
+              payments: { type: 'array', items: { $ref: '#/components/schemas/Payment' } },
+            },
+          },
+        ],
+      },
+      CreateInvoiceItem: {
+        oneOf: [
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['category', 'appointmentId', 'unitPrice'],
+            properties: {
+              category: { type: 'string', const: 'consultation' },
+              appointmentId: { type: 'string', format: 'uuid' },
+              unitPrice: { type: ['number', 'string'] },
+            },
+          },
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['category', 'labRequestItemId'],
+            properties: {
+              category: { type: 'string', const: 'laboratory' },
+              labRequestItemId: { type: 'string', format: 'uuid' },
+            },
+          },
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['category', 'dispenseRecordId'],
+            properties: {
+              category: { type: 'string', const: 'pharmacy' },
+              dispenseRecordId: { type: 'string', format: 'uuid' },
+            },
+          },
+        ],
+      },
+      CreateInvoiceRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['patientId', 'items'],
+        properties: {
+          patientId: { type: 'string', format: 'uuid' },
+          items: { type: 'array', minItems: 1, maxItems: 200, items: { $ref: '#/components/schemas/CreateInvoiceItem' } },
+        },
+      },
+      UpdateInvoiceRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['items'],
+        properties: {
+          items: { type: 'array', minItems: 1, maxItems: 200, items: { $ref: '#/components/schemas/CreateInvoiceItem' } },
+        },
+      },
+      VoidInvoiceRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['reason'],
+        properties: { reason: { type: 'string', minLength: 1, maxLength: 500 } },
+      },
+      CreatePaymentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['amount', 'method'],
+        properties: {
+          amount: { type: ['number', 'string'] },
+          method: { $ref: '#/components/schemas/PaymentMethod' },
+          externalReference: { type: ['string', 'null'], maxLength: 200 },
+        },
+      },
+      ReversePaymentRequest: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['reason'],
+        properties: { reason: { type: 'string', minLength: 1, maxLength: 500 } },
+      },
+      InvoiceDetailResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/InvoiceDetail' } },
+      },
+      InvoiceListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/InvoiceListItem' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      PaymentResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { $ref: '#/components/schemas/Payment' } },
+      },
+      PaymentListResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: { data: { type: 'array', items: { $ref: '#/components/schemas/Payment' } } },
+      },
+      BillingPatientListResponse: {
+        type: 'object',
+        required: ['data', 'meta'],
+        properties: {
+          data: { type: 'array', items: { $ref: '#/components/schemas/BillingPatient' } },
+          meta: { $ref: '#/components/schemas/PatientListResponse/properties/meta' },
+        },
+      },
+      ConsultationSourceResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['appointmentId', 'startsAt', 'endsAt', 'doctorDisplayName', 'billed', 'billedInvoiceId', 'billedInvoiceNumber'],
+              properties: {
+                appointmentId: { type: 'string', format: 'uuid' },
+                startsAt: { type: 'string', format: 'date-time' },
+                endsAt: { type: 'string', format: 'date-time' },
+                doctorDisplayName: { type: 'string' },
+                billed: { type: 'boolean' },
+                billedInvoiceId: { type: ['string', 'null'], format: 'uuid' },
+                billedInvoiceNumber: { type: ['string', 'null'] },
+              },
+            },
+          },
+        },
+      },
+      LaboratorySourceResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['labRequestItemId', 'testCode', 'testName', 'quantity', 'unitPrice', 'currency', 'billed', 'billedInvoiceId', 'billedInvoiceNumber'],
+              properties: {
+                labRequestItemId: { type: 'string', format: 'uuid' },
+                testCode: { type: 'string' },
+                testName: { type: 'string' },
+                quantity: { type: 'string' },
+                unitPrice: { type: 'string' },
+                currency: { type: 'string' },
+                billed: { type: 'boolean' },
+                billedInvoiceId: { type: ['string', 'null'], format: 'uuid' },
+                billedInvoiceNumber: { type: ['string', 'null'] },
+              },
+            },
+          },
+        },
+      },
+      PharmacySourceResponse: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['dispenseRecordId', 'medicineCode', 'medicineName', 'quantity', 'unit', 'unitPrice', 'currency', 'billed', 'billedInvoiceId', 'billedInvoiceNumber'],
+              properties: {
+                dispenseRecordId: { type: 'string', format: 'uuid' },
+                medicineCode: { type: 'string' },
+                medicineName: { type: 'string' },
+                quantity: { type: 'string' },
+                unit: { type: 'string' },
+                unitPrice: { type: 'string' },
+                currency: { type: 'string' },
+                billed: { type: 'boolean' },
+                billedInvoiceId: { type: ['string', 'null'], format: 'uuid' },
+                billedInvoiceNumber: { type: ['string', 'null'] },
+              },
+            },
+          },
         },
       },
       ErrorResponse: {

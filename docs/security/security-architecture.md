@@ -74,6 +74,12 @@ engineering policy for this milestone, not a claim from the source PDF.
   the database. Client-supplied actor IDs are rejected. Administrator pharmacy
   access excludes receiving and dispensing. `patient.read` is not pharmacy
   access.
+- Billing currently authorizes `invoice.read`, `invoice.create`,
+  `invoice.update`, `invoice.issue`, `invoice.void`, `payment.read`,
+  `payment.create`, and `payment.reverse` as documented in
+  `docs/development/billing-management.md`. Accountant does not receive
+  `patient.read` or clinical permissions. Billing-safe DTOs omit diagnoses,
+  results, and unnecessary demographics.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.

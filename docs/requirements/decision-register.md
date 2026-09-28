@@ -325,6 +325,51 @@ writes and reports/analytics are out of this milestone.
 
 Full context: `docs/development/pharmacy-management.md`.
 
+### D-025 — Billing and payments policy
+
+D-025 is APPROVED and is the Milestone 12 billing policy. It specializes D-016
+for application behavior without changing the physical schema.
+
+Permissions:
+
+| Permission | Administrator | Doctor | Nurse | Receptionist | Laboratory Staff | Pharmacist | Accountant |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `invoice.read` | yes | no | no | no | no | no | yes |
+| `invoice.create` | no | no | no | no | no | no | yes |
+| `invoice.update` | no | no | no | no | no | no | yes |
+| `invoice.issue` | no | no | no | no | no | no | yes |
+| `invoice.void` | yes | no | no | no | no | no | yes |
+| `payment.read` | yes | no | no | no | no | no | yes |
+| `payment.create` | no | no | no | no | no | no | yes |
+| `payment.reverse` | yes | no | no | no | no | no | yes |
+
+`invoice.update` applies to draft invoices only. Accountant is not granted
+`patient.read` or clinical, appointment, laboratory, or pharmacy permissions.
+Billing-safe lookup exposes patient identification needed to invoice, not
+clinical data.
+
+Invoice numbers are server-generated `INV-<UUID>`. Payment numbers are
+server-generated `PAY-<UUID>`. Lifecycle is `draft → issued → partially_paid →
+paid`, with `void` from any of those states. Issued invoices are financially
+immutable. Partial and multiple payments are allowed; overpayment is rejected.
+Tax and discount remain zero. Currency is the configured `DEFAULT_CURRENCY`.
+Payment methods are `cash`, `card`, and `bank_transfer`. Effective payment
+states are `recorded` and `reversed`.
+
+Billable sources are completed appointments (accountant-entered consultation
+price), completed laboratory items with a non-null catalog price, and
+unreversed pharmacy dispenses using weighted-average batch sale price. One
+invoice line per dispense. Admission billing is deferred. Duplicate laboratory
+and pharmacy charges on non-void invoices are rejected. Consultation uniqueness
+is not invented.
+
+Payment reversal is the existing linked reversal record with a required reason.
+M11 stock reversal and M12 financial reversal remain independent. Receipts are
+on-screen printable views using `payment_number`; stored PDFs are not
+implemented.
+
+Full context: `docs/development/billing-management.md`.
+
 ## Ambiguities that do not block the architecture baseline
 
 These require a decision before implementing their affected module:
@@ -348,9 +393,12 @@ These require a decision before implementing their affected module:
   near-expiry alerts. Canonical units, full dispensing reversal, receiving,
   adjustments, derived inventory, partial dispensing, and pharmacy permissions
   are resolved by D-015, D-020, and D-024.
-- Enabled tax/discount rules, payment methods, billing idempotency/granularity, invoice
-  numbering, receipt format, revenue recognition, and default currency. Partial
-  payments, overpayment rejection, and linked reversals are resolved by D-016.
+- Revenue recognition, report columns, and dashboard analytics. Tax remains disabled,
+  discount remains disabled, payment methods, invoice/payment numbering, printable
+  on-screen receipts, default currency configuration, consultation/laboratory/pharmacy
+  billing grain, and linked payment reversal are resolved by D-016 and D-025.
+  Admission billing, insurance, credit accounts, interest, FX, payment gateways,
+  stored PDF receipts, and a generic idempotency framework remain deferred.
 - Attendance capture/correction method, leave types, allowances, overlap rules, and
   approval operating policy. Baseline states and decision metadata are resolved by
   D-019.

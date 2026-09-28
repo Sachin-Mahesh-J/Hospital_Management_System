@@ -58,6 +58,14 @@ export const APPROVED_PERMISSIONS = [
   [PERMISSIONS.labRequestCreate, 'Create laboratory requests from a linked doctor profile.'],
   [PERMISSIONS.labSampleCollect, 'Record sample collection for a laboratory request item.'],
   [PERMISSIONS.labResultEnter, 'Enter a laboratory result for a collected request item.'],
+  [PERMISSIONS.invoiceRead, 'Read billing-safe invoices and billable-source lookups.'],
+  [PERMISSIONS.invoiceCreate, 'Create draft invoices.'],
+  [PERMISSIONS.invoiceUpdate, 'Update draft invoices only.'],
+  [PERMISSIONS.invoiceIssue, 'Issue draft invoices.'],
+  [PERMISSIONS.invoiceVoid, 'Void invoices according to billing policy.'],
+  [PERMISSIONS.paymentRead, 'Read invoice payments and printable receipt data.'],
+  [PERMISSIONS.paymentCreate, 'Record payments against issued invoices.'],
+  [PERMISSIONS.paymentReverse, 'Fully reverse a recorded payment.'],
 ] as const
 
 export const ROLE_PERMISSION_CODES: Record<
@@ -95,6 +103,10 @@ export const ROLE_PERMISSION_CODES: Record<
     PERMISSIONS.stockAdjust,
     PERMISSIONS.stockMovementRead,
     PERMISSIONS.prescriptionReverse,
+    PERMISSIONS.invoiceRead,
+    PERMISSIONS.invoiceVoid,
+    PERMISSIONS.paymentRead,
+    PERMISSIONS.paymentReverse,
   ],
   receptionist: [
     PERMISSIONS.identitySelfRead,
@@ -161,6 +173,14 @@ export const ROLE_PERMISSION_CODES: Record<
   accountant: [
     PERMISSIONS.identitySelfRead,
     PERMISSIONS.identityPasswordChange,
+    PERMISSIONS.invoiceRead,
+    PERMISSIONS.invoiceCreate,
+    PERMISSIONS.invoiceUpdate,
+    PERMISSIONS.invoiceIssue,
+    PERMISSIONS.invoiceVoid,
+    PERMISSIONS.paymentRead,
+    PERMISSIONS.paymentCreate,
+    PERMISSIONS.paymentReverse,
   ],
 }
 

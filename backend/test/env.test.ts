@@ -12,6 +12,7 @@ const validEnvironment = {
   JWT_ISSUER: 'hms-api',
   JWT_AUDIENCE: 'hms-web',
   HOSPITAL_TIMEZONE: 'Asia/Colombo',
+  DEFAULT_CURRENCY: 'LKR',
 }
 
 describe('environment configuration', () => {
@@ -27,6 +28,7 @@ describe('environment configuration', () => {
     expect(configuration.jwt.issuer).toBe('hms-api')
     expect(configuration.auth.cookieName).toBe('hms_refresh')
     expect(configuration.hospital.timezone).toBe('Asia/Colombo')
+    expect(configuration.hospital.defaultCurrency).toBe('LKR')
   })
 
   it('uses only the isolated test URL in the test environment', () => {
@@ -60,5 +62,11 @@ describe('environment configuration', () => {
         HOSPITAL_TIMEZONE: 'Not/AZone',
       }),
     ).toThrow('HOSPITAL_TIMEZONE')
+    expect(() =>
+      loadEnvironment({
+        ...validEnvironment,
+        DEFAULT_CURRENCY: 'lkr',
+      }),
+    ).toThrow('DEFAULT_CURRENCY')
   })
 })
