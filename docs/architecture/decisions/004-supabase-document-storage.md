@@ -27,6 +27,11 @@ keeps database access efficient.
 
 ## Consequences
 
-Upload validation, authorization, checksums, signed operations, orphan reconciliation,
-retention, backup, and eventual malware scanning must be designed explicitly. Service
-credentials remain backend-only.
+Upload validation, authorization, checksums, and signed download operations are
+backend-mediated. Default signed URL TTL is 300 seconds. Orphan reconciliation,
+retention jobs, backup of storage objects, and malware scanning remain production
+considerations and are not implemented as application jobs.
+
+Service credentials remain backend-only. Tests always use an in-memory storage double.
+Local development may set `DOCUMENT_STORAGE_DRIVER=memory` when a live non-production
+bucket is not available. Production must use private Supabase Storage.

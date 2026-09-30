@@ -73,6 +73,7 @@ export type AppointmentDto = {
     startsAt: string
     endsAt: string
   } | null
+  overlapsApprovedLeave: boolean
 }
 
 function relatedInterval(row: {
@@ -91,6 +92,7 @@ function relatedInterval(row: {
 
 export function toAppointmentDto(
   appointment: AppointmentRecord,
+  overlapsApprovedLeave = false,
 ): AppointmentDto {
   return {
     id: appointment.id,
@@ -135,5 +137,6 @@ export function toAppointmentDto(
     rescheduledTo: appointment.rescheduledTo
       ? relatedInterval(appointment.rescheduledTo)
       : null,
+    overlapsApprovedLeave,
   }
 }

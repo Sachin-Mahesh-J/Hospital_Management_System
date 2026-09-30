@@ -1,6 +1,6 @@
 # Appointment Management
 
-Status: Implemented (Milestone 8)
+Status: Implemented (Milestones 8 and 16; D-013, D-021, D-033)
 
 ## Scope
 
@@ -34,7 +34,10 @@ Create and reschedule require:
 - an existing doctor with `doctor_profiles.status = active` and
   `employees.employment_status = active`;
 - timezone-aware `startsAt` / `endsAt` with `endsAt > startsAt`;
-- the appointment interval fully contained in an `available` doctor schedule.
+- the appointment interval fully contained in an `available` doctor schedule;
+- the doctor employee must not have approved leave overlapping the hospital-local
+  dates of the appointment. Pending, rejected, and cancelled leave do not block
+  booking. Existing appointments are not auto-cancelled.
 
 Active overlap (`scheduled` and `checked_in`) is enforced by PostgreSQL exclusion
 constraints using half-open `tstzrange(..., '[)')`. Adjacent intervals are allowed.
@@ -96,7 +99,19 @@ Logout and session expiry clear cached server state.
 
 The booking form attaches the browser-local offset to `datetime-local` values so the
 API receives an explicit offset. Presentation uses the browser locale. Hospital IANA
-timezone “today” calendar bounds are not configured and are not implemented.
+timezone is used for approved-leave date overlap.
+
+## Calendar visualization (D-033)
+
+`/appointments/calendar` provides day, week, and month views over the existing
+appointment list API. Blocks use actual `startsAt`/`endsAt` so different durations
+are visible. Appointments overlapping a doctor's approved leave are flagged
+(`overlapsApprovedLeave`) and highlighted. Empty hour slots open the existing booking
+form with prefilled local start/end. Drag-and-drop rescheduling is not implemented.
+No additional calendar library was added.
+
+Day/week grids display 07:00–19:00 in the browser-local timezone as a layout
+assumption; appointments outside that window remain in month view and in the list.
 
 ## Deferred / pending policy
 
@@ -107,7 +122,7 @@ The following remain unresolved and are not implemented:
 - default appointment duration
 - past-booking prohibition
 - recurrence, holidays, breaks, waitlists, reminders, and notifications
-- hospital timezone “today” views
+- drag-and-drop rescheduling
 - patient self-booking
 
 ## Testing

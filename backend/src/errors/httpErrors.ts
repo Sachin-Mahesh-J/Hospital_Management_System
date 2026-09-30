@@ -29,3 +29,9 @@ export class ConflictError extends AppError {
     super(409, 'RESOURCE_CONFLICT', message)
   }
 }
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'A required service is temporarily unavailable.') {
+    super(503, 'SERVICE_UNAVAILABLE', message)
+  }
+}

@@ -4,6 +4,7 @@ import {
 } from 'react-router-dom'
 import { ProtectedRoute } from '../auth/ProtectedRoute'
 import { AnyPermissionRoute, PermissionRoute } from '../auth/PermissionRoute'
+import { AppointmentCalendarPage } from '../features/appointments/AppointmentCalendarPage'
 import { AppointmentCreatePage } from '../features/appointments/AppointmentCreatePage'
 import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage'
 import { AppointmentEditPage } from '../features/appointments/AppointmentEditPage'
@@ -54,6 +55,10 @@ import { RevenueReportPage } from '../features/reports/RevenueReportPage'
 import { PharmacyReportPage } from '../features/reports/PharmacyReportPage'
 import { LaboratoryReportPage as LaboratoryAnalyticsReportPage } from '../features/reports/LaboratoryReportPage'
 import { StaffReportPage } from '../features/reports/StaffReportPage'
+import { AttendanceListPage } from '../features/attendance/AttendanceListPage'
+import { LeaveListPage } from '../features/leave/LeaveListPage'
+import { UserListPage } from '../features/users/UserListPage'
+import { AuditListPage } from '../features/audit/AuditListPage'
 import { REPORT_PERMISSIONS } from '../features/reports/permissions'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { HomePage } from '../pages/HomePage'
@@ -181,6 +186,7 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="appointment.read" />,
                     children: [
                       { index: true, element: <AppointmentListPage /> },
+                      { path: 'calendar', element: <AppointmentCalendarPage /> },
                       { path: ':appointmentId', element: <AppointmentDetailPage /> },
                     ],
                   },
@@ -366,6 +372,26 @@ export const appRoutes: RouteObject[] = [
                     children: [{ path: 'staff', element: <StaffReportPage /> }],
                   },
                 ],
+              },
+              {
+                path: 'attendance',
+                element: <PermissionRoute permission="attendance.read" />,
+                children: [{ index: true, element: <AttendanceListPage /> }],
+              },
+              {
+                path: 'leave',
+                element: <PermissionRoute permission="leave.read" />,
+                children: [{ index: true, element: <LeaveListPage /> }],
+              },
+              {
+                path: 'users',
+                element: <PermissionRoute permission="user.read" />,
+                children: [{ index: true, element: <UserListPage /> }],
+              },
+              {
+                path: 'audit',
+                element: <PermissionRoute permission="audit.read" />,
+                children: [{ index: true, element: <AuditListPage /> }],
               },
               { path: '*', element: <NotFoundPage /> },
             ],

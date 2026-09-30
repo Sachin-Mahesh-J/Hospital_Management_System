@@ -118,21 +118,22 @@ Purpose: Stable operation-level permissions used by backend authorization polici
 
 #### `user_roles`
 
-Purpose: Many-to-many assignment of roles to users with attribution.
+Purpose: Assignment of exactly one catalog role to each user, with attribution (D-031).
 
 | Column | PostgreSQL type | Nullable | Key | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | `id` | `uuid` | No | PK | `gen_random_uuid()` | Assignment identity |
-| `user_id` | `uuid` | No | FK |  | Assigned user |
+| `user_id` | `uuid` | No | FK, UK |  | Assigned user; one row per user |
 | `role_id` | `uuid` | No | FK |  | Assigned role |
 | `assigned_by_user_id` | `uuid` | Yes | FK |  | Actor; null only for bootstrap/system |
 | `assigned_at` | `timestamptz` | No |  | `now()` | Assignment time |
 
 - Foreign keys: all to `users`/`roles`, `ON DELETE RESTRICT`.
-- Unique: `(user_id, role_id)`.
-- Indexes: `idx_user_roles_role_id` on `role_id`; the unique index starts with
-  `user_id`.
-- Relationship: `users` many-to-many `roles`.
+- Unique: `user_id` (`uq_user_roles_user_id`) so a user cannot have two roles.
+  `(user_id, role_id)` remains unique as well.
+- Indexes: `idx_user_roles_role_id` on `role_id`.
+- Relationship: each user has at most one role row. Application create and role
+  replacement keep that row present after a successful change.
 
 #### `role_permissions`
 
@@ -323,20 +324,21 @@ Purpose: Employee leave requests and approval outcomes.
 | `starts_on` | `date` | No |  |  | First leave date |
 | `ends_on` | `date` | No |  |  | Last leave date |
 | `leave_type` | `varchar(50)` | No |  |  | Policy-defined type |
-| `reason` | `text` | No |  |  | Request reason |
-| `status` | `varchar(20)` | No |  | `'requested'` | `requested`, `approved`, `rejected`, or `cancelled` |
+| `reason` | `text` | Yes |  |  | Optional request reason |
+| `status` | `varchar(20)` | No |  | `'pending'` | `pending`, `approved`, `rejected`, or `cancelled` |
 | `decided_by_user_id` | `uuid` | Yes | FK |  | Approver/rejector |
 | `decided_at` | `timestamptz` | Yes |  |  | Decision time |
 | `decision_note` | `varchar(500)` | Yes |  |  | Optional explanation |
 | `created_at` | `timestamptz` | No |  | `now()` | Creation time |
 | `updated_at` | `timestamptz` | No |  | `now()` | Last modification |
 
-- Checks: `ends_on >= starts_on`; valid status; approved/rejected rows require both
-  decision fields, while requested rows have neither.
+- Checks: `ends_on >= starts_on`; valid status; overlapping pending or approved leave
+  for the same employee is rejected by exclusion constraint
+  `ex_leave_records_employee_active_overlap`.
 - Indexes: `(employee_id, starts_on, ends_on)`, `(status, starts_on)`.
 - Delete: employee/decision actor restricted.
-- `PENDING DECISION`: leave types, allowance calculations, overlap rules, and capture
-  method are policy inputs, not inferred from the PDF.
+- D-029: `leaveType` is unconstrained `varchar(50)` free text. Allowance calculations
+  remain out of scope.
 
 ### 4.3 Patients, appointments, admissions, and clinical records
 
@@ -389,7 +391,8 @@ Purpose: Authorized metadata for patient objects stored in private Supabase Stor
 | `detected_media_type` | `varchar(100)` | No |  |  | Server-detected MIME type |
 | `size_bytes` | `bigint` | No |  |  | Object size |
 | `checksum` | `varchar(128)` | No |  |  | Content checksum |
-| `category` | `varchar(50)` | No |  |  | Policy-defined document category |
+| `title` | `varchar(200)` | No |  |  | Display title |
+| `category` | `varchar(50)` | No |  |  | `medical_report`, `laboratory_report`, `prescription`, `referral`, or `other` |
 | `status` | `varchar(20)` | No |  | `'pending'` | `pending`, `available`, `quarantined`, or `deleted` |
 | `description` | `varchar(500)` | Yes |  |  | Optional description |
 | `uploaded_at` | `timestamptz` | Yes |  |  | Completed upload time |
@@ -401,8 +404,8 @@ Purpose: Authorized metadata for patient objects stored in private Supabase Stor
   requires `uploaded_at`; deleted requires `deleted_at`.
 - Indexes: `(patient_id, created_at DESC)`, `(status, created_at)`.
 - Delete: patient and uploader restricted; use document status lifecycle.
-- `PENDING DECISION`: category list, maximum size, media allowlist, retention, and
-  malware-scanning release policy.
+- D-030: maximum size 10 MB; MIME allowlist PDF/JPEG/PNG detected from magic bytes;
+  soft-delete only; malware scanning remains a production consideration.
 
 #### `appointments`
 

@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { Page } from '../../shared/components/Page'
 import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { PatientDocumentsPanel } from '../documents/PatientDocumentsPanel'
 import { useMedicalRecords } from '../medical-records/hooks'
 import { usePatient } from './hooks'
 
@@ -113,9 +114,16 @@ export function PatientDetailPage() {
       >
         <PatientMedicalHistory patientId={patient.id} />
       </Can>
-      <Alert severity="info">
-        Patient document upload is deferred until the storage architecture is approved.
-      </Alert>
+      <Can
+        fallback={
+          <Alert severity="info">
+            Patient documents require dedicated document permissions.
+          </Alert>
+        }
+        permission="patient_document.read"
+      >
+        <PatientDocumentsPanel patientId={patient.id} />
+      </Can>
     </Page>
   )
 }

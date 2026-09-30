@@ -75,11 +75,16 @@ export function AppointmentListPage() {
       title="Appointments"
       description="Book, review, cancel, and reschedule outpatient appointments. Times are shown in the browser locale."
       actions={
-        <Can permission="appointment.create">
-          <Button component={Link} to="/appointments/new" variant="contained">
-            Book appointment
+        <Stack direction="row" spacing={1}>
+          <Button component={Link} to="/appointments/calendar">
+            Calendar
           </Button>
-        </Can>
+          <Can permission="appointment.create">
+            <Button component={Link} to="/appointments/new" variant="contained">
+              Book appointment
+            </Button>
+          </Can>
+        </Stack>
       }
     >
       <Paper sx={{ p: 2 }}>

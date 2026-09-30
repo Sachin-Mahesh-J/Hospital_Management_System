@@ -167,6 +167,26 @@ describe('application routing', () => {
     ).toBeVisible()
   })
 
+  it('blocks attendance, leave, user, and audit routes when permission is absent', async () => {
+    for (const path of ['/attendance', '/leave', '/users', '/audit']) {
+      const router = createMemoryRouter(appRoutes, {
+        initialEntries: [path],
+      })
+      const { unmount } = render(
+        <AuthContext value={{
+          ...authValue,
+          user: { ...authenticatedUser, permissions: [] },
+        }}>
+          <RouterProvider router={router} />
+        </AuthContext>,
+      )
+      expect(
+        await screen.findByText('You are not authorized to access this page.'),
+      ).toBeVisible()
+      unmount()
+    }
+  })
+
   it('blocks patient routes when the required permission is absent', async () => {
     const router = createMemoryRouter(appRoutes, {
       initialEntries: ['/patients'],

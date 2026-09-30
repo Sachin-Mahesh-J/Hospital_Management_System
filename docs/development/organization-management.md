@@ -8,8 +8,8 @@ This module supports departments, employee/staff records, doctor profiles linked
 existing employees, and explicit doctor schedule intervals.
 
 Appointment booking, cancellation, rescheduling, and approved status transitions are
-implemented in Milestone 8. Attendance, leave, recurrence, and schedule overlap policy
-are not implemented.
+implemented in Milestone 8. Attendance and leave APIs are implemented in Milestone 16
+under D-028 and D-029. Recurrence and schedule overlap policy are not implemented.
 
 ## API and layers
 
@@ -64,7 +64,6 @@ The following remain unresolved and are not implemented:
 - overlap policy
 - duration rules
 - holiday calendars
-- leave/attendance integration
 - hospital IANA timezone configuration for schedule wall-clock entry
 - contextual “own schedule” write authorization
 

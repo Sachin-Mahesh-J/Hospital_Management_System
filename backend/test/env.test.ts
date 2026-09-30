@@ -13,6 +13,9 @@ const validEnvironment = {
   JWT_AUDIENCE: 'hms-web',
   HOSPITAL_TIMEZONE: 'Asia/Colombo',
   DEFAULT_CURRENCY: 'LKR',
+  SUPABASE_URL: 'https://example.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'test-only-service-role-key',
+  SUPABASE_STORAGE_BUCKET: 'hms-patient-documents',
 }
 
 describe('environment configuration', () => {
@@ -29,6 +32,24 @@ describe('environment configuration', () => {
     expect(configuration.auth.cookieName).toBe('hms_refresh')
     expect(configuration.hospital.timezone).toBe('Asia/Colombo')
     expect(configuration.hospital.defaultCurrency).toBe('LKR')
+    expect(configuration.storage.bucket).toBe('hms-patient-documents')
+    expect(configuration.storage.signedUrlTtlSeconds).toBe(300)
+    expect(configuration.storage.driver).toBe('supabase')
+  })
+
+  it('allows memory document storage only outside production', () => {
+    const configuration = loadEnvironment({
+      ...validEnvironment,
+      DOCUMENT_STORAGE_DRIVER: 'memory',
+    })
+    expect(configuration.storage.driver).toBe('memory')
+    expect(() =>
+      loadEnvironment({
+        ...validEnvironment,
+        NODE_ENV: 'production',
+        DOCUMENT_STORAGE_DRIVER: 'memory',
+      }),
+    ).toThrow('DOCUMENT_STORAGE_DRIVER')
   })
 
   it('uses only the isolated test URL in the test environment', () => {
@@ -41,6 +62,7 @@ describe('environment configuration', () => {
 
     expect(configuration.database.connectionUrl).toContain('/hms_test')
     expect(configuration.database.connectionUrl).not.toContain('/hms_development')
+    expect(configuration.storage.driver).toBe('memory')
   })
 
   it('rejects missing test database configuration', () => {

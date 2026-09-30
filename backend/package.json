@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node src/scripts/copy-audit-font.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit --pretty false",
     "lint": "oxlint src test prisma.config.ts",
@@ -18,7 +18,9 @@
     "prisma:validate": "prisma validate"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@prisma/client": "6.12.0",
+    "@supabase/supabase-js": "^2.117.2",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -27,6 +29,8 @@
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.1.0",
     "jose": "^6.2.12",
+    "multer": "^2.4.0",
+    "pdf-lib": "^1.17.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "swagger-ui-express": "^5.0.1",
@@ -36,6 +40,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.13.3",
     "@types/supertest": "^6.0.3",
     "@types/swagger-ui-express": "^4.1.8",

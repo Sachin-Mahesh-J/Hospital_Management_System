@@ -45,7 +45,9 @@ Expected backend configuration will include:
 - `DEFAULT_CURRENCY`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_DOCUMENT_BUCKET`
+- `SUPABASE_STORAGE_BUCKET`
+- `DOCUMENT_SIGNED_URL_TTL_SECONDS`
+- `DOCUMENT_STORAGE_DRIVER` (`supabase` in production; `memory` is rejected there)
 
 Names may be refined during initialization. Real values are provider secrets; only
 variable names and safe examples belong in `.env.example`.

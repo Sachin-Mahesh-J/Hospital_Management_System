@@ -9,7 +9,10 @@ import {
   NotFoundError,
   ValidationError,
 } from '../../errors/httpErrors.js'
+import { calendarDateUtc, hospitalToday } from '../../config/hospitalTime.js'
 import { writeAudit } from '../audit/audit.service.js'
+import { employeeHasApprovedLeaveOverlapping } from '../leave/leave.service.js'
+import { listApprovedLeaveWindows } from '../leave/leave.repository.js'
 import {
   cancelAppointment as cancelAppointmentRecord,
   createAppointment as createAppointmentRecord,
@@ -30,7 +33,11 @@ import type {
   UpdateAppointmentBody,
   UpdateAppointmentStatusBody,
 } from './appointment.schemas.js'
-import { toAppointmentDto, type AppointmentDto } from './appointment.types.js'
+import {
+  toAppointmentDto,
+  type AppointmentDto,
+  type AppointmentRecord,
+} from './appointment.types.js'
 
 type MutationContext = {
   actorUserId: string
@@ -85,7 +92,7 @@ async function assertPatientExists(
 async function assertBookableDoctor(
   doctorId: string,
   client: Parameters<typeof findDoctorForBooking>[1],
-): Promise<void> {
+): Promise<{ employeeId: string }> {
   const doctor = await findDoctorForBooking(doctorId, client)
   if (!doctor) throw new NotFoundError('Doctor was not found.')
   if (doctor.status !== 'active') {
@@ -96,18 +103,26 @@ async function assertBookableDoctor(
       'This doctor is not available for appointment booking.',
     )
   }
+  return { employeeId: doctor.employee.id }
 }
 
-async function assertAvailableSchedule(
-  doctorId: string,
+async function assertDoctorNotOnApprovedLeave(
+  employeeId: string,
   startsAt: Date,
   endsAt: Date,
   client: Prisma.TransactionClient,
 ): Promise<void> {
-  const schedule = await lockAvailableSchedule(doctorId, startsAt, endsAt, client)
-  if (!schedule) {
+  const fromDate = hospitalToday(startsAt)
+  const toDate = hospitalToday(new Date(Math.max(startsAt.getTime(), endsAt.getTime() - 1)))
+  const blocked = await employeeHasApprovedLeaveOverlapping(
+    employeeId,
+    fromDate,
+    toDate,
+    client,
+  )
+  if (blocked) {
     throw new ConflictError(
-      'The appointment does not fit an available doctor schedule.',
+      'This doctor has approved leave during that interval.',
     )
   }
 }
@@ -122,12 +137,27 @@ async function assertBookingRules(
   client: Prisma.TransactionClient,
 ): Promise<{ startsAt: Date; endsAt: Date }> {
   await assertPatientExists(input.patientId, client)
-  await assertBookableDoctor(input.doctorId, client)
+  const doctor = await assertBookableDoctor(input.doctorId, client)
   const startsAt = new Date(input.startsAt)
   const endsAt = new Date(input.endsAt)
   assertInterval(startsAt, endsAt)
   await assertAvailableSchedule(input.doctorId, startsAt, endsAt, client)
+  await assertDoctorNotOnApprovedLeave(doctor.employeeId, startsAt, endsAt, client)
   return { startsAt, endsAt }
+}
+
+async function assertAvailableSchedule(
+  doctorId: string,
+  startsAt: Date,
+  endsAt: Date,
+  client: Prisma.TransactionClient,
+): Promise<void> {
+  const schedule = await lockAvailableSchedule(doctorId, startsAt, endsAt, client)
+  if (!schedule) {
+    throw new ConflictError(
+      'The appointment does not fit an available doctor schedule.',
+    )
+  }
 }
 
 async function assertNoRescheduleCycle(
@@ -146,6 +176,69 @@ async function assertNoRescheduleCycle(
   }
 }
 
+function appointmentHospitalDates(startsAt: Date, endsAt: Date): {
+  fromDate: string
+  toDate: string
+} {
+  const lastInstant = new Date(Math.max(startsAt.getTime(), endsAt.getTime() - 1))
+  const fromDate = hospitalToday(startsAt)
+  const toDate = hospitalToday(lastInstant)
+  return fromDate <= toDate
+    ? { fromDate, toDate }
+    : { fromDate: toDate, toDate: fromDate }
+}
+
+function appointmentOverlapsLeaveWindow(
+  startsAt: Date,
+  endsAt: Date,
+  startsOn: Date,
+  endsOn: Date,
+): boolean {
+  const { fromDate, toDate } = appointmentHospitalDates(startsAt, endsAt)
+  const leaveFrom = calendarDateUtc(startsOn)
+  const leaveTo = calendarDateUtc(endsOn)
+  return fromDate <= leaveTo && toDate >= leaveFrom
+}
+
+async function withLeaveOverlapFlags(
+  appointments: AppointmentRecord[],
+): Promise<AppointmentDto[]> {
+  if (appointments.length === 0) return []
+  const employeeIds = [
+    ...new Set(appointments.map((row) => row.doctor.employee.id)),
+  ]
+  const range = appointments.reduce(
+    (current, row) => {
+      const dates = appointmentHospitalDates(row.startsAt, row.endsAt)
+      return {
+        fromDate: dates.fromDate < current.fromDate ? dates.fromDate : current.fromDate,
+        toDate: dates.toDate > current.toDate ? dates.toDate : current.toDate,
+      }
+    },
+    appointmentHospitalDates(appointments[0]!.startsAt, appointments[0]!.endsAt),
+  )
+  const windows = await listApprovedLeaveWindows(
+    employeeIds,
+    range.fromDate,
+    range.toDate,
+  )
+  return appointments.map((appointment) =>
+    toAppointmentDto(
+      appointment,
+      windows.some(
+        (window) =>
+          window.employeeId === appointment.doctor.employee.id &&
+          appointmentOverlapsLeaveWindow(
+            appointment.startsAt,
+            appointment.endsAt,
+            window.startsOn,
+            window.endsOn,
+          ),
+      ),
+    ),
+  )
+}
+
 export async function getAppointments(query: ListAppointmentsQuery): Promise<{
   data: AppointmentDto[]
   pagination: {
@@ -157,7 +250,7 @@ export async function getAppointments(query: ListAppointmentsQuery): Promise<{
 }> {
   const result = await listAppointmentRecords(query)
   return {
-    data: result.appointments.map(toAppointmentDto),
+    data: await withLeaveOverlapFlags(result.appointments),
     pagination: {
       page: query.page,
       pageSize: query.pageSize,
@@ -170,7 +263,8 @@ export async function getAppointments(query: ListAppointmentsQuery): Promise<{
 export async function getAppointment(id: string): Promise<AppointmentDto> {
   const appointment = await findAppointmentById(id)
   if (!appointment) throw new NotFoundError('Appointment was not found.')
-  return toAppointmentDto(appointment)
+  const [dto] = await withLeaveOverlapFlags([appointment])
+  return dto!
 }
 
 export async function registerAppointment(

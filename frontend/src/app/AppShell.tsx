@@ -42,6 +42,21 @@ const navigation = [
     permission: 'appointment.read',
   },
   {
+    label: 'Calendar',
+    path: '/appointments/calendar',
+    permission: 'appointment.read',
+  },
+  {
+    label: 'Attendance',
+    path: '/attendance',
+    permission: 'attendance.read',
+  },
+  {
+    label: 'Leave',
+    path: '/leave',
+    permission: 'leave.read',
+  },
+  {
     label: 'Admissions',
     path: '/admissions',
     permission: 'admission.read',
@@ -75,6 +90,16 @@ const navigation = [
     label: 'Billing',
     path: '/billing',
     permission: 'invoice.read',
+  },
+  {
+    label: 'Users',
+    path: '/users',
+    permission: 'user.read',
+  },
+  {
+    label: 'Audit',
+    path: '/audit',
+    permission: 'audit.read',
   },
   {
     label: 'Change password',

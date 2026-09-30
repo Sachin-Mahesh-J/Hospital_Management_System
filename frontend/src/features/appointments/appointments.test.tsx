@@ -15,6 +15,7 @@ import * as doctorScheduleApi from '../doctor-schedules/api'
 import * as doctorApi from '../doctors/api'
 import * as patientApi from '../patients/api'
 import * as appointmentApi from './api'
+import { AppointmentCalendarPage } from './AppointmentCalendarPage'
 import { AppointmentCreatePage } from './AppointmentCreatePage'
 import { AppointmentDetailPage } from './AppointmentDetailPage'
 import { AppointmentListPage } from './AppointmentListPage'
@@ -65,6 +66,7 @@ const appointment: Appointment = {
   createdBy: { id: 'user-1', username: 'receptionist' },
   rescheduledFrom: null,
   rescheduledTo: null,
+  overlapsApprovedLeave: false,
 }
 
 function createClient() {
@@ -198,6 +200,7 @@ describe('appointment list', () => {
     expect(await screen.findByText('Review')).toBeVisible()
     expect(screen.getByText(/Fictional Patient/)).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Book appointment' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeVisible()
   })
 
   it('shows request errors and empty results', async () => {
@@ -342,6 +345,33 @@ describe('appointment detail actions', () => {
     expect(screen.queryByRole('button', { name: 'Cancel appointment' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Reschedule' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Mark / })).toBeNull()
+  })
+})
+
+describe('appointment calendar', () => {
+  it('loads existing appointments into day week and month views', async () => {
+    vi.mocked(appointmentApi.fetchAppointments).mockResolvedValue({
+      data: [appointment],
+      pagination: { page: 1, pageSize: 100, totalItems: 1, totalPages: 1 },
+    })
+    render(
+      <QueryClientProvider client={createClient()}>
+        <AuthContext value={authValue()}>
+          <MemoryRouter>
+            <AppointmentCalendarPage />
+          </MemoryRouter>
+        </AuthContext>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Appointment calendar' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Day' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Week' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Month' })).toBeVisible()
+    expect(screen.getByLabelText('Doctor')).toBeVisible()
+    expect(screen.getByText(/Approved leave does not cancel/)).toBeVisible()
+    await waitFor(() => expect(appointmentApi.fetchAppointments).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Month' }))
+    await waitFor(() => expect(vi.mocked(appointmentApi.fetchAppointments).mock.calls.length).toBeGreaterThan(1))
   })
 })
 

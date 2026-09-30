@@ -62,7 +62,9 @@ async function parseError(response: Response): Promise<ErrorResponse> {
 function createHeaders(path: string, init: RequestInit): Headers {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
-  if (init.body && !headers.has('Content-Type')) {
+  const isFormData =
+    typeof FormData !== 'undefined' && init.body instanceof FormData
+  if (init.body && !headers.has('Content-Type') && !isFormData) {
     headers.set('Content-Type', 'application/json')
   }
   if (accessToken) {
@@ -169,7 +171,11 @@ async function request<T>(
       return throwResponseError(response)
     }
 
-    return select(body!)
+    if (response.status === 204 || body === undefined) {
+      return undefined as T
+    }
+
+    return select(body)
   } catch (error: unknown) {
     if (error instanceof ApiError) {
       throw error
@@ -212,6 +218,47 @@ export const apiClient = {
       method: 'PATCH',
       body: JSON.stringify(body),
     })
+  },
+  delete<T>(path: string, init?: RequestInit): Promise<T> {
+    return request<T>(path, { ...init, method: 'DELETE' })
+  },
+  postForm<T>(path: string, body: FormData, init?: RequestInit): Promise<T> {
+    return request<T>(path, {
+      ...init,
+      method: 'POST',
+      body,
+    })
+  },
+  async getBlob(path: string, init?: RequestInit): Promise<Blob> {
+    const headers = createHeaders(path, init ?? {})
+    headers.delete('Accept')
+    headers.set('Accept', '*/*')
+    let response = await fetch(`${env.apiUrl}${path}`, {
+      ...init,
+      method: 'GET',
+      credentials: 'include',
+      headers,
+    })
+    if (response.status === 401 && accessToken !== null) {
+      try {
+        await refreshAccessToken()
+      } catch {
+        return throwResponseError(response)
+      }
+      const retriedHeaders = createHeaders(path, init ?? {})
+      retriedHeaders.delete('Accept')
+      retriedHeaders.set('Accept', '*/*')
+      response = await fetch(`${env.apiUrl}${path}`, {
+        ...init,
+        method: 'GET',
+        credentials: 'include',
+        headers: retriedHeaders,
+      })
+    }
+    if (!response.ok) {
+      return throwResponseError(response)
+    }
+    return response.blob()
   },
   getEnvelope<T>(
     path: string,

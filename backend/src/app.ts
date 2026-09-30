@@ -35,6 +35,11 @@ import {
   dashboardRouter,
   reportRouter,
 } from './modules/reports/report.routes.js'
+import { attendanceRouter } from './modules/attendance/attendance.routes.js'
+import { leaveRouter } from './modules/leave/leave.routes.js'
+import { documentRouter } from './modules/documents/document.routes.js'
+import { userRouter } from './modules/users/user.routes.js'
+import { auditRouter } from './modules/audit/audit.routes.js'
 
 export function createApp() {
   const app = express()
@@ -78,11 +83,16 @@ export function createApp() {
   app.use('/api/v1/health', healthRouter)
   app.use('/api/v1/auth', authRouter)
   app.use('/api/v1/patients', patientRouter)
+  app.use('/api/v1/patients/:patientId/documents', documentRouter)
   app.use('/api/v1/departments', departmentRouter)
   app.use('/api/v1/employees', employeeRouter)
   app.use('/api/v1/doctors', doctorRouter)
   app.use('/api/v1/appointments', appointmentRouter)
   app.use('/api/v1/admissions', admissionRouter)
+  app.use('/api/v1/attendance', attendanceRouter)
+  app.use('/api/v1/leave', leaveRouter)
+  app.use('/api/v1/users', userRouter)
+  app.use('/api/v1/audit', auditRouter)
   app.use('/api/v1/medical-records', medicalRecordRouter)
   app.use('/api/v1/prescriptions', prescriptionRouter)
   app.use('/api/v1/medicines', medicineRouter)

@@ -77,6 +77,7 @@ export type Appointment = {
   createdBy: { id: string; username: string }
   rescheduledFrom: AppointmentRelation | null
   rescheduledTo: AppointmentRelation | null
+  overlapsApprovedLeave: boolean
 }
 
 export type AppointmentInput = {

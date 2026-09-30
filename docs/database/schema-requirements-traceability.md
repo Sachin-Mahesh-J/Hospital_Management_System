@@ -65,7 +65,7 @@ Status meanings:
 | Employee registration | PDF 3.9 | `employees` | COVERED |
 | Staff department assignment | PDF 3.9 | Employee M:1 department | COVERED |
 | Attendance | PDF 3.9 | One `attendance_records` row per employee/work date | COVERED |
-| Leave records | PDF 3.9 | `leave_records` with baseline decision metadata | PARTIALLY COVERED |
+| Leave records | PDF 3.9; D-029 | `leave_records` with pending/approved overlap exclusion and decision metadata | COVERED |
 | Patient reports | PDF 3.10 | Indexed patient and clinical operational tables | PARTIALLY COVERED |
 | Appointment reports | PDF 3.10 | Indexed appointment date/status/doctor/patient fields | PARTIALLY COVERED |
 | Revenue reports | PDF 3.10 | Invoices, invoice lines, payments, date/status indexes | PARTIALLY COVERED |

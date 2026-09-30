@@ -10,8 +10,8 @@ sorting, search, and patient details.
 
 Medical history is implemented by the Medical Records module and requires
 `medical_record.read`. Patient demographic permission is not sufficient. Patient
-document upload remains deferred until its storage, retention, media, and
-malware-scanning policies are approved.
+documents are implemented under D-030 with dedicated `patient_document.*`
+permissions. See `docs/development/patient-documents.md`.
 
 ## API and layers
 

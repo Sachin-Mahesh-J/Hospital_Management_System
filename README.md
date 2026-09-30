@@ -15,6 +15,12 @@ laboratory, and staff reports plus the named dashboard metrics under D-027.
 See `docs/development/reports-and-dashboard.md`. CSV/PDF export, attendance
 and leave reports, and advanced analytics remain deferred.
 
+Milestone 16 implemented attendance, leave, patient documents, operational user
+administration, audit viewing/export, and the appointment calendar under D-028
+through D-033. See `docs/development/operations-management.md`,
+`docs/development/patient-documents.md`, and
+`docs/development/appointment-management.md`.
+
 The primary requirements source remains `Hospital_system.pdf`. That file is not
 currently in the workspace; the approved baseline is
 `docs/requirements/requirements-analysis.md`. Approved planning and architecture
@@ -68,6 +74,10 @@ Backend:
 - `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
 - `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry, report, and dashboard boundaries.
 - `DEFAULT_CURRENCY` — ISO 4217 currency used for every invoice and payment.
+- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_STORAGE_BUCKET` —
+  private patient-document storage (ADR-004). The service role key stays
+  backend-only. Use a dedicated non-production bucket locally.
+- `DOCUMENT_SIGNED_URL_TTL_SECONDS` — signed download lifetime; default 300.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret
 configuration.

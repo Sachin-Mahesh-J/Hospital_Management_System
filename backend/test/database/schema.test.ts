@@ -238,6 +238,31 @@ describe('PostgreSQL physical schema', () => {
     })
   })
 
+  it('rejects a second role row for the same user', async () => {
+    await withRollback(async (transaction) => {
+      const suffix = randomUUID().slice(0, 8)
+      const userId = await createUser(transaction)
+      const roles = await transaction.$queryRaw<Array<{ id: string }>>`
+        INSERT INTO "roles" ("code", "name")
+        VALUES
+          (${`role-a-${suffix}`}, ${`Role A ${suffix}`}),
+          (${`role-b-${suffix}`}, ${`Role B ${suffix}`})
+        RETURNING "id"
+      `
+      await transaction.$executeRaw`
+        INSERT INTO "user_roles" ("user_id", "role_id")
+        VALUES (${userId}::uuid, ${roles[0]!.id}::uuid)
+      `
+      const error = await captureViolation(
+        transaction.$executeRaw`
+          INSERT INTO "user_roles" ("user_id", "role_id")
+          VALUES (${userId}::uuid, ${roles[1]!.id}::uuid)
+        `,
+      )
+      expectPostgresViolation(error, '23505', 'user_id')
+    })
+  })
+
   it('enforces the case-insensitive username uniqueness rule', async () => {
     await withRollback(async (transaction) => {
       const suffix = randomUUID()
@@ -747,7 +772,8 @@ describe('PostgreSQL physical schema', () => {
           'idx_refresh_sessions_user_active',
           'idx_patients_name_ci',
           'idx_lab_results_lab_request_item_id_version_number',
-          'uq_admissions_one_active_per_patient'
+          'uq_admissions_one_active_per_patient',
+          'uq_user_roles_user_id'
         )
     `
     expect(indexes.map(({ indexname }) => indexname).sort()).toEqual([
@@ -755,6 +781,7 @@ describe('PostgreSQL physical schema', () => {
       'idx_patients_name_ci',
       'idx_refresh_sessions_user_active',
       'uq_admissions_one_active_per_patient',
+      'uq_user_roles_user_id',
       'uq_users_username_ci',
     ])
   })

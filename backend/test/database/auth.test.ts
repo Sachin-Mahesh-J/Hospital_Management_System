@@ -48,7 +48,7 @@ async function createUser(options: {
   status?: string
   failedLoginCount?: number
   lockedUntil?: Date | null
-  roleIds?: string[]
+  roleId?: string
 } = {}) {
   const plainPassword = options.password ?? 'Valid password 42'
   const user = await prisma.user.create({
@@ -61,9 +61,7 @@ async function createUser(options: {
         ? { lockedUntil: options.lockedUntil }
         : {}),
       roles: {
-        create: (options.roleIds ?? [roleId]).map((assignedRoleId) => ({
-          roleId: assignedRoleId,
-        })),
+        create: { roleId: options.roleId ?? roleId },
       },
     },
   })
@@ -370,10 +368,10 @@ describe('authentication API', () => {
       .expect(401)
   })
 
-  it('enforces authentication and aggregated permissions', async () => {
+  it('enforces authentication and permissions from the single role', async () => {
     await request(app).get('/api/v1/auth/me').expect(401)
 
-    const deniedUser = await createUser({ roleIds: [secondaryRoleId] })
+    const deniedUser = await createUser({ roleId: secondaryRoleId })
     const deniedLogin = await login(
       deniedUser.user.username,
       deniedUser.plainPassword,
@@ -386,19 +384,19 @@ describe('authentication API', () => {
     await prisma.rolePermission.create({
       data: { roleId: secondaryRoleId, permissionId: selfPermissionId },
     })
-    const multiRoleUser = await createUser({
-      roleIds: [roleId, secondaryRoleId],
-    })
+    const allowedUser = await createUser({ roleId: secondaryRoleId })
     const allowedLogin = await login(
-      multiRoleUser.user.username,
-      multiRoleUser.plainPassword,
+      allowedUser.user.username,
+      allowedUser.plainPassword,
     )
     const response = await request(app)
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${allowedLogin.body.data.accessToken}`)
     expect(response.status).toBe(200)
-    expect(response.body.data.roles).toEqual(
-      expect.arrayContaining(['auth_test_user', 'auth_test_secondary']),
+    expect(response.body.data.roles).toEqual(['auth_test_secondary'])
+    expect(response.body.data.permissions).toContain(PERMISSIONS.identitySelfRead)
+    expect(response.body.data.permissions).not.toContain(
+      PERMISSIONS.identityPasswordChange,
     )
   })
 

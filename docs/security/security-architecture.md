@@ -93,6 +93,12 @@ engineering policy for this milestone, not a claim from the source PDF.
   `lab_request.read` are not report access. Accountant revenue-report access
   does not include `patient.read`. Dashboard metrics are omitted unless the
   matching report permission is granted.
+- Attendance, leave, operational users, and audit viewing currently authorize
+  dedicated `attendance.*`, `leave.*`, `user.*`, and `audit.read` permissions as
+  documented in `docs/development/operations-management.md`.
+- Patient documents currently authorize dedicated `patient_document.*`
+  permissions as documented in `docs/development/patient-documents.md`.
+  `patient.read` is not document access.
 - Resource checks restrict access to relevant patients, assignments, or work queues.
 - Role membership never bypasses contextual checks.
 - Administrator authority does not automatically include clinical editing.
@@ -113,6 +119,7 @@ engineering policy for this milestone, not a claim from the source PDF.
 ## Patient document security
 
 - Use a private Supabase Storage bucket; no public object URLs.
+- Local development may use `DOCUMENT_STORAGE_DRIVER=memory`; production must not.
 - Generate unguessable object keys independently from submitted filenames.
 - Normalize filenames for display and never use them as filesystem paths.
 - Enforce approved file-size and MIME allowlists and inspect file signatures where
@@ -125,6 +132,7 @@ engineering policy for this milestone, not a claim from the source PDF.
   PostgreSQL.
 - Audit document access and state changes without logging document contents.
 - Define malware scanning before production handling of untrusted real-world files.
+  Scanning infrastructure is not implemented in Milestone 16.
 
 ## Sensitive data handling
 
@@ -150,7 +158,10 @@ Audit at minimum:
 - laboratory collection, result entry, finalization, and correction;
 - dispensing and inventory adjustments;
 - invoice, payment, receipt, refund/reversal actions when supported;
-- administrative report exports when supported.
+- administrative report exports when supported;
+- attendance and leave create/update/decision actions;
+- operational user create/update/role/status/password-reset actions;
+- audit CSV/PDF export.
 
 Each event records actor, action, resource type and identifier, timestamp, request ID,
 outcome, and minimal structured change metadata. Audit records are append-oriented and

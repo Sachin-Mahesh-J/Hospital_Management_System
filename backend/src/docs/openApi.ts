@@ -2,7 +2,7 @@ export const openApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Hospital Management System API',
-    version: '0.11.0',
+    version: '0.12.0',
     description: 'Implemented HMS REST API contracts.',
   },
   paths: {
@@ -1565,6 +1565,236 @@ export const openApiDocument = {
           '200': { description: 'Dashboard metrics authorized for the current user.', content: { 'application/json': { schema: { $ref: '#/components/schemas/DashboardResponse' } } } },
           '400': { description: 'Invalid query.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           '401': { description: 'Authentication required.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/attendance': {
+      get: {
+        summary: 'List attendance records',
+        description: 'Requires attendance.read. Historical rows remain available for inactive or terminated employees.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Paginated attendance records.' },
+          '403': { description: 'attendance.read is not granted.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+      post: {
+        summary: 'Create an attendance record',
+        description: 'Requires attendance.create. One record per employee per work date is enforced.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '201': { description: 'Attendance recorded.' },
+          '409': { description: 'Duplicate employee/date attendance.', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
+    '/api/v1/attendance/{id}': {
+      get: {
+        summary: 'Get an attendance record',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Attendance record.' } },
+      },
+      patch: {
+        summary: 'Update an attendance record',
+        description: 'Requires attendance.update. Every change is audited.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Attendance updated.' } },
+      },
+    },
+    '/api/v1/leave': {
+      get: {
+        summary: 'List leave records',
+        description: 'Requires leave.read. Callers without leave.approve see only their linked employee records.',
+        security: [{ bearerAuth: [] }],
+        responses: { '200': { description: 'Paginated leave records.' } },
+      },
+      post: {
+        summary: 'Create a leave request for the linked employee',
+        description: 'Requires leave.create. Overlapping pending or approved leave is rejected.',
+        security: [{ bearerAuth: [] }],
+        responses: { '201': { description: 'Leave requested.' } },
+      },
+    },
+    '/api/v1/leave/{id}': {
+      get: {
+        summary: 'Get a leave record',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Leave record.' } },
+      },
+      patch: {
+        summary: 'Update a pending leave request',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Leave updated.' } },
+      },
+    },
+    '/api/v1/leave/{id}/approve': {
+      post: {
+        summary: 'Approve pending leave',
+        description: 'Requires leave.approve.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Leave approved.' } },
+      },
+    },
+    '/api/v1/leave/{id}/reject': {
+      post: {
+        summary: 'Reject pending leave',
+        description: 'Requires leave.approve.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Leave rejected.' } },
+      },
+    },
+    '/api/v1/leave/{id}/cancel': {
+      post: {
+        summary: 'Cancel own pending leave',
+        description: 'Requires leave.cancel. Only the linked employee may cancel their pending request.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Leave cancelled.' } },
+      },
+    },
+    '/api/v1/patients/{patientId}/documents': {
+      get: {
+        summary: 'List patient documents',
+        description: 'Requires patient_document.read. patient.read is not sufficient.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Paginated documents.' } },
+      },
+      post: {
+        summary: 'Upload a patient document',
+        description: 'Requires patient_document.create. Multipart file plus title and category. Maximum 10 MB. PDF, JPEG, and PNG only.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '201': { description: 'Document uploaded.' } },
+      },
+    },
+    '/api/v1/patients/{patientId}/documents/{documentId}': {
+      get: {
+        summary: 'Get patient document metadata',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'documentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: { '200': { description: 'Document metadata without storage URLs.' } },
+      },
+      patch: {
+        summary: 'Update document metadata',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'documentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: { '200': { description: 'Metadata updated.' } },
+      },
+      delete: {
+        summary: 'Soft-delete a patient document',
+        description: 'The stored object is not physically deleted.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'documentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: { '200': { description: 'Document soft-deleted.' } },
+      },
+    },
+    '/api/v1/patients/{patientId}/documents/{documentId}/access': {
+      post: {
+        summary: 'Issue a short-lived signed download URL',
+        description: 'Authorization is performed before a signed URL is issued. Signed URLs are not written to audit logs.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'patientId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'documentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: { '200': { description: 'Short-lived signed URL and expiry.' } },
+      },
+    },
+    '/api/v1/users': {
+      get: {
+        summary: 'List operational users',
+        description: 'Requires user.read. Passwords and hashes are never returned.',
+        security: [{ bearerAuth: [] }],
+        responses: { '200': { description: 'Paginated users.' } },
+      },
+      post: {
+        summary: 'Create an operational user',
+        description: 'Requires user.create. Exactly one catalog role. The supplied password is hashed and is never returned.',
+        security: [{ bearerAuth: [] }],
+        responses: { '201': { description: 'User created.' } },
+      },
+    },
+    '/api/v1/users/{id}': {
+      get: {
+        summary: 'Get an operational user',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'User record without secrets.' } },
+      },
+      patch: {
+        summary: 'Update username or employee link',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'User updated.' } },
+      },
+    },
+    '/api/v1/users/{id}/role': {
+      post: {
+        summary: 'Change a user role',
+        description: 'Self-demotion and removing the last active Administrator are rejected.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Role updated.' } },
+      },
+    },
+    '/api/v1/users/{id}/deactivate': {
+      post: {
+        summary: 'Deactivate a user',
+        description: 'Sessions are revoked. Users are never deleted.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'User deactivated.' } },
+      },
+    },
+    '/api/v1/users/{id}/reactivate': {
+      post: {
+        summary: 'Reactivate a user',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'User reactivated.' } },
+      },
+    },
+    '/api/v1/users/{id}/password-reset': {
+      post: {
+        summary: 'Reset another user’s password',
+        description: 'The new password is never returned. Existing sessions are revoked.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '204': { description: 'Password reset. No password is returned.' } },
+      },
+    },
+    '/api/v1/audit': {
+      get: {
+        summary: 'List sanitized audit records',
+        description: 'Requires audit.read. Bounded occurredFrom/occurredTo is required. Sensitive payloads are not returned.',
+        security: [{ bearerAuth: [] }],
+        responses: { '200': { description: 'Paginated sanitized audit rows.' } },
+      },
+    },
+    '/api/v1/audit/export': {
+      get: {
+        summary: 'Export sanitized audit records as CSV or PDF',
+        description: 'Generated on demand and not stored. The export itself is audited after a successful generation. Filtered results larger than 5000 rows are rejected and no partial file is returned.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Complete CSV or PDF download.' },
+          '400': { description: 'AUDIT_EXPORT_TOO_LARGE when the filtered result exceeds 5000 rows.' },
         },
       },
     },

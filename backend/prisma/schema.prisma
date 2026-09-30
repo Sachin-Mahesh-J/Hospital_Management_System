@@ -74,6 +74,7 @@ model UserRole {
   role             Role     @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_user_roles_role_id")
   assignedBy       User?    @relation("UserRoleAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_user_roles_assigned_by_user_id")
 
+  @@unique([userId], map: "uq_user_roles_user_id")
   @@unique([userId, roleId], map: "uq_user_roles_user_id_role_id")
   @@index([roleId], map: "idx_user_roles_role_id")
   @@map("user_roles")
@@ -127,6 +128,9 @@ model AuditLog {
   @@index([actorUserId, occurredAt(sort: Desc)], map: "idx_audit_logs_actor_user_id_occurred_at")
   @@index([resourceType, resourceId, occurredAt(sort: Desc)], map: "idx_audit_logs_resource_type_resource_id_occurred_at")
   @@index([requestId], map: "idx_audit_logs_request_id")
+  @@index([occurredAt(sort: Desc)], map: "idx_audit_logs_occurred_at")
+  @@index([action, occurredAt(sort: Desc)], map: "idx_audit_logs_action_occurred_at")
+  @@index([outcome, occurredAt(sort: Desc)], map: "idx_audit_logs_outcome_occurred_at")
   @@map("audit_logs")
 }
 
@@ -233,8 +237,8 @@ model LeaveRecord {
   startsOn        DateTime  @map("starts_on") @db.Date
   endsOn          DateTime  @map("ends_on") @db.Date
   leaveType       String    @map("leave_type") @db.VarChar(50)
-  reason          String
-  status          String    @default("requested") @db.VarChar(20)
+  reason          String?
+  status          String    @default("pending") @db.VarChar(20)
   decidedByUserId String?   @map("decided_by_user_id") @db.Uuid
   decidedAt       DateTime? @map("decided_at") @db.Timestamptz(6)
   decisionNote    String?   @map("decision_note") @db.VarChar(500)
@@ -284,6 +288,7 @@ model PatientDocument {
   detectedMediaType String    @map("detected_media_type") @db.VarChar(100)
   sizeBytes         BigInt    @map("size_bytes")
   checksum          String    @db.VarChar(128)
+  title             String    @db.VarChar(200)
   category          String    @db.VarChar(50)
   status            String    @default("pending") @db.VarChar(20)
   description       String?   @db.VarChar(500)

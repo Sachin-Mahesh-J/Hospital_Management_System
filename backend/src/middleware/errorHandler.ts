@@ -48,6 +48,17 @@ export const errorHandler: ErrorRequestHandler = (
     } else if (error.code === 'P2025') {
       safeError = new NotFoundError()
     }
+  } else if (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'MulterError' &&
+    'code' in error &&
+    error.code === 'LIMIT_FILE_SIZE'
+  ) {
+    safeError = new ValidationError('File size must be greater than 0 and at most 10 MB.', [
+      { path: 'file', message: 'File size must be greater than 0 and at most 10 MB.' },
+    ])
   }
 
   if (!safeError) {

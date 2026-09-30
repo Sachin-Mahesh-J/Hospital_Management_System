@@ -1,0 +1,8 @@
+Noto Sans Regular (unhinted)
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
+Source: https://github.com/notofonts/notofonts.github.io/raw/main/fonts/NotoSans/unhinted/ttf/NotoSans-Regular.ttf
+SHA-256: f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8
+License: SIL Open Font License, Version 1.1 (OFL.txt)
+
+Embedded by the audit PDF exporter so Latin, Greek, and Cyrillic audit text is preserved.
+Characters outside this font are written as U+XXXX so export still succeeds.

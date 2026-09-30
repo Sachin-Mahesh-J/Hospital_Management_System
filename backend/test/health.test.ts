@@ -68,7 +68,11 @@ describe('API infrastructure', () => {
     expect(specification.body.paths).toHaveProperty('/api/v1/reports/laboratory')
     expect(specification.body.paths).toHaveProperty('/api/v1/reports/staff')
     expect(specification.body.paths).toHaveProperty('/api/v1/dashboard')
-    expect(specification.body.info.version).toBe('0.11.0')
+    expect(specification.body.paths).toHaveProperty('/api/v1/attendance')
+    expect(specification.body.paths).toHaveProperty('/api/v1/leave')
+    expect(specification.body.paths).toHaveProperty('/api/v1/users')
+    expect(specification.body.paths).toHaveProperty('/api/v1/audit')
+    expect(specification.body.info.version).toBe('0.12.0')
     expect(documentation.text).toContain('Swagger UI')
   })
 

@@ -49,6 +49,16 @@ const environmentSchema = z
   DEFAULT_CURRENCY: z
     .string()
     .regex(/^[A-Z]{3}$/, 'must be a 3-letter ISO 4217 currency code'),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(16),
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).max(100),
+  DOCUMENT_SIGNED_URL_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(30)
+    .max(900)
+    .default(300),
+  DOCUMENT_STORAGE_DRIVER: z.enum(['supabase', 'memory']).default('supabase'),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'test' && !value.TEST_DATABASE_URL) {
@@ -56,6 +66,16 @@ const environmentSchema = z
         code: 'custom',
         path: ['TEST_DATABASE_URL'],
         message: 'is required when NODE_ENV is test',
+      })
+    }
+    if (
+      value.DOCUMENT_STORAGE_DRIVER === 'memory' &&
+      value.NODE_ENV === 'production'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['DOCUMENT_STORAGE_DRIVER'],
+        message: 'memory storage is not allowed in production',
       })
     }
   })
@@ -87,6 +107,13 @@ export type AppConfig = {
   hospital: {
     timezone: string
     defaultCurrency: string
+  }
+  storage: {
+    driver: 'supabase' | 'memory'
+    supabaseUrl: string
+    serviceRoleKey: string
+    bucket: string
+    signedUrlTtlSeconds: number
   }
 }
 
@@ -146,6 +173,16 @@ export function loadEnvironment(
     hospital: {
       timezone: result.data.HOSPITAL_TIMEZONE,
       defaultCurrency: result.data.DEFAULT_CURRENCY,
+    },
+    storage: {
+      driver:
+        result.data.NODE_ENV === 'test'
+          ? 'memory'
+          : result.data.DOCUMENT_STORAGE_DRIVER,
+      supabaseUrl: result.data.SUPABASE_URL,
+      serviceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,
+      bucket: result.data.SUPABASE_STORAGE_BUCKET,
+      signedUrlTtlSeconds: result.data.DOCUMENT_SIGNED_URL_TTL_SECONDS,
     },
   }
 }

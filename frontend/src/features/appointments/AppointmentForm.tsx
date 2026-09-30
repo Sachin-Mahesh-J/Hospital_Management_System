@@ -31,6 +31,9 @@ import type { Appointment, AppointmentInput, AppointmentRescheduleInput } from '
 
 type AppointmentFormProps = {
   appointment?: Appointment
+  initialDoctorId?: string
+  initialEndsAt?: string
+  initialStartsAt?: string
   isPending: boolean
   lockPatient?: boolean
   onSubmit: (input: AppointmentInput | AppointmentRescheduleInput) => Promise<void>
@@ -39,6 +42,9 @@ type AppointmentFormProps = {
 
 export function AppointmentForm({
   appointment,
+  initialDoctorId = '',
+  initialEndsAt = '',
+  initialStartsAt = '',
   isPending,
   lockPatient = false,
   onSubmit,
@@ -49,7 +55,7 @@ export function AppointmentForm({
   const canReadDoctors = hasPermission(user, 'doctor.read')
   const canReadSchedules = hasPermission(user, 'doctor_schedule.read')
   const [patientId, setPatientId] = useState(appointment?.patientId ?? '')
-  const [doctorId, setDoctorId] = useState(appointment?.doctorId ?? '')
+  const [doctorId, setDoctorId] = useState(appointment?.doctorId ?? initialDoctorId)
   const [error, setError] = useState<string | null>(null)
   const patients = usePatients(
     { page: 1, pageSize: 100 },
@@ -163,7 +169,11 @@ export function AppointmentForm({
         )}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
-            defaultValue={appointment ? instantToLocalInput(appointment.startsAt) : ''}
+            defaultValue={
+              appointment
+                ? instantToLocalInput(appointment.startsAt)
+                : initialStartsAt
+            }
             fullWidth
             label="Start"
             name="startsAt"
@@ -175,7 +185,11 @@ export function AppointmentForm({
             type="datetime-local"
           />
           <TextField
-            defaultValue={appointment ? instantToLocalInput(appointment.endsAt) : ''}
+            defaultValue={
+              appointment
+                ? instantToLocalInput(appointment.endsAt)
+                : initialEndsAt
+            }
             fullWidth
             label="End"
             name="endsAt"
