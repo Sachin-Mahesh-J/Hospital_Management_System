@@ -21,6 +21,10 @@ through D-033. See `docs/development/operations-management.md`,
 `docs/development/patient-documents.md`, and
 `docs/development/appointment-management.md`.
 
+Milestone 17 prepares the implemented application for Vercel, Render, and Supabase
+PostgreSQL under D-034. See `docs/deployment/deployment-architecture.md`. Backup and
+disaster-recovery evidence remain D-035 and are not claimed.
+
 The primary requirements source remains `Hospital_system.pdf`. That file is not
 currently in the workspace; the approved baseline is
 `docs/requirements/requirements-analysis.md`. Approved planning and architecture
@@ -63,7 +67,10 @@ Backend:
 
 - `NODE_ENV` — `development`, `test`, or `production`.
 - `PORT` — API listening port.
-- `DATABASE_URL` — PostgreSQL connection URL used by Prisma tooling.
+- `DATABASE_URL` — PostgreSQL connection URL used at runtime by Prisma.
+- `DIRECT_URL` — PostgreSQL URL used by `prisma migrate deploy`. Locally this is the
+  same database as `DATABASE_URL`. Production may use a distinct direct or session-mode
+  URI. Express does not read this variable.
 - `ALLOWED_ORIGINS` — comma-separated exact browser origins allowed by CORS.
 - `LOG_LEVEL` — Pino log level.
 - `JWT_ACCESS_SECRET` — high-entropy JWT signing secret (at least 32 characters).
@@ -78,6 +85,8 @@ Backend:
   private patient-document storage (ADR-004). The service role key stays
   backend-only. Use a dedicated non-production bucket locally.
 - `DOCUMENT_SIGNED_URL_TTL_SECONDS` — signed download lifetime; default 300.
+- `DOCUMENT_STORAGE_DRIVER` — `supabase` in production; `memory` is allowed only in
+  local development and is rejected when `NODE_ENV=production`.
 
 Real credentials belong only in uncommitted `.env` files or deployment-provider secret
 configuration.
@@ -143,6 +152,31 @@ npm run test:database
 ```
 
 Neither command deploys to Supabase or any other cloud database.
+
+## Production deployment
+
+Cloud deployment uses Vercel (frontend), Render (API), and Supabase PostgreSQL plus
+private Storage. The runbook is `docs/deployment/deployment-architecture.md`.
+
+Summary:
+
+1. Create a dedicated Supabase project, private document bucket, and connection URIs.
+2. Set Render environment variables from `backend/.env.example` names. Use production
+   values only in the Render dashboard. Set `TRUST_PROXY=true` and
+   `DOCUMENT_STORAGE_DRIVER=supabase`.
+3. Apply schema with `npm run prisma:migrate:deploy` against production `DIRECT_URL`.
+   Do not run `prisma db push` and do not migrate during API startup.
+4. Deploy the API with the Render build/start commands in `render.yaml`.
+5. Set Vercel `VITE_API_URL` to `https://<render-host>/api/v1` and deploy with
+   `vercel.json`.
+6. Put the Vercel origin and `http://localhost:5173` in `ALLOWED_ORIGINS`.
+7. Confirm production cookies are `Secure; HttpOnly; SameSite=None; Path=/api/v1/auth`.
+8. Bootstrap a fictional administrator, then verify health, OpenAPI, login, refresh,
+   and representative workflows on the live URLs.
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs lint, typecheck, tests,
+database tests against ephemeral PostgreSQL, production builds, Prisma validate, and
+`npm audit`.
 
 ## Authentication setup
 

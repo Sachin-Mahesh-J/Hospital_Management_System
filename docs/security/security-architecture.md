@@ -193,6 +193,9 @@ cannot be changed by ordinary application roles.
 - Add dependency and secret scanning when CI is initialized.
 - Conduct a focused security review before public deployment.
 
+CI now runs lint, typecheck, tests, database tests, production builds, Prisma
+validation, and `npm audit`. Production secrets must remain in provider dashboards.
+
 ## Remaining policy inputs
 
 Before processing real patient data, define jurisdiction, retention, consent, data

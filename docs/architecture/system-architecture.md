@@ -220,6 +220,8 @@ warehouse require measured evidence and are not part of the baseline.
 - Audit events are durable domain/security history and are separate from operational
   logs.
 - Health endpoints distinguish process liveness from dependency readiness.
+  `GET /api/v1/health` is process liveness. Database readiness is process startup
+  through Prisma `$connect`, not a second public health document.
 - Metrics and external monitoring are selected during deployment preparation.
 - Protected health information, credentials, tokens, and document contents are excluded
   from logs.

@@ -25,5 +25,8 @@ uploads/
 .DS_Store
 Thumbs.db
 
+# Platform CLI metadata
+.vercel
+
 # Source specification
 Hospital_system.pdf

@@ -17,6 +17,10 @@ describe('logger redaction', () => {
         'req.body.reason',
         'req.body.cardNumber',
         'req.body.cvv',
+        'DATABASE_URL',
+        'DIRECT_URL',
+        'JWT_ACCESS_SECRET',
+        'SUPABASE_SERVICE_ROLE_KEY',
       ]),
     )
   })

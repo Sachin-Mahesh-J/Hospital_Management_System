@@ -1,8 +1,8 @@
 # Decision and Ambiguity Register
 
 Status: Baseline for architecture and logical data design. Milestone 16 implemented
-approved application gates D-028 through D-033. Operating gates D-034 and D-035 remain
-pending.
+approved application gates D-028 through D-033. D-034 production deployment operating
+policy is approved. D-035 backup/DR remains pending.
 
 ## Decisions approved for the foundation
 
@@ -783,11 +783,12 @@ and holiday management remain not specified.
 ### D-034 — Production deployment operating policy
 
 ```text
-PENDING USER APPROVAL
+APPROVED
 ```
 
-M15 audit gate. D-001 and ADR-005 remain APPROVED for cloud deployment as current
-scope. This gate covers remaining operating choices. Do not deploy in M15.
+D-001 and ADR-005 remain APPROVED for cloud deployment as current scope. D-034 records
+the operating policy used to prepare and verify a Vercel / Render / Supabase demo
+environment. D-035 still blocks backup, restore, and high-availability claims.
 
 #### Question
 
@@ -795,33 +796,57 @@ Which production URLs, CORS origins, cookie domain, `TRUST_PROXY`, migration
 process, and health/verification checks will be used, and is a same-origin Vercel
 proxy required after cookie testing?
 
+#### Decision
+
+Use option 1: direct HTTPS REST from the Vercel frontend to the Render Express API,
+with production refresh cookies `Secure; HttpOnly; SameSite=None; Path=/api/v1/auth`.
+
+| Topic | Operating choice |
+| --- | --- |
+| Frontend | Vercel static Vite build from the repository root (`vercel.json`) |
+| Backend | Render Node web service from the repository root (`render.yaml`) |
+| Database | Supabase PostgreSQL through Prisma |
+| Documents | Private Supabase Storage; `DOCUMENT_STORAGE_DRIVER=supabase` |
+| CORS | Exact `ALLOWED_ORIGINS`: deployed Vercel origin plus approved local origins |
+| Cookie domain | Host-only on the Render API host; do not set `AUTH_COOKIE_DOMAIN` |
+| Trust proxy | `TRUST_PROXY=true` on Render |
+| Migrations | `prisma migrate deploy` as a separate release step; never at process startup |
+| Health | Existing `GET /api/v1/health` process liveness; no extra vendor-only routes |
+| Proxy fallback | Same-origin Vercel API proxy only if the live cookie test fails |
+
+Public platform URLs are sufficient. Secrets stay in provider dashboards. Demo data
+must be fictional. Actual project URLs are recorded after they exist; this decision
+does not invent them.
+
+Full runbook: `docs/deployment/deployment-architecture.md`.
+
 #### Current evidence
 
-Deployment architecture lists the topology and env names. No Vercel/Render project
-files exist. Cross-site cookies are a documented risk.
+Deployment architecture lists the topology, env names, Render/Vercel project files,
+and verification steps. A dedicated `hms-demo` Supabase project exists in
+`ap-south-1` with the committed schema and a private document bucket. Vercel and
+Render public URLs are not live yet. Cross-site cookies remain a documented browser
+risk.
 
 #### Existing implementation
 
-Local env examples; production cookie flags in code; `prisma migrate deploy` script;
-static `/health`.
+Environment examples with placeholders; production cookie flags in code;
+`prisma migrate deploy`; process-only `/api/v1/health`; `vercel.json`; `render.yaml`.
 
-#### Options
+#### Options considered
 
 1. Direct Vercel-to-Render calls with `SameSite=None` after a documented cookie test.
 2. Same-origin Vercel API proxy if the cookie test fails.
 3. Record operator-owned platform projects and env values but defer public go-live.
 
+Option 1 is approved. Option 2 remains the fallback if browsers block the refresh
+cookie. Option 3 is rejected for this milestone because cloud deployment is in scope.
+
 #### Impact
 
-1. Matches current code defaults; may fail in some browsers.
-2. Topology change already anticipated by ADR-003; needs proxy configuration.
-3. Keeps D-001 in scope without claiming production readiness.
-
-#### Recommendation
-
-Specification-compatible options are 1–3. Secrets remain provider-managed. Database
-health on `/health` and Storage credentials are technical follow-through after this
-gate, not PDF product features. D-035 still blocks backup/HA claims.
+Matches current authentication code. Some browsers may still block third-party
+cookies; that is a verification result, not a reason to store access tokens in
+web storage. D-035 still blocks backup/HA claims.
 
 ### D-035 — Backup and disaster-recovery operating policy
 
@@ -953,8 +978,8 @@ These require a decision before implementing their affected module:
   Automatic retention/deletion remains deferred.
 - Whether appointment “calendar display” requires a grid widget. Implemented by D-033.
   Drag-and-drop reschedule, recurrence, and holidays remain deferred.
-- Production URLs, CORS, cookie topology, and go-live verification. D-001 remains
-  approved for scope. Pending D-034.
+- Production URLs, CORS, cookie topology, and go-live verification. D-034 is approved
+  for the Vercel-to-Render topology; live URLs are recorded after they exist.
 - Backup frequency, retention, restore tests, RPO/RTO, and HA evidence. Pending D-035.
 
 ## Operational requirements needing measurable targets

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json && node src/scripts/copy-audit-font.mjs",
+    "build": "prisma generate && tsc -p tsconfig.build.json && node src/scripts/copy-audit-font.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit --pretty false",
     "lint": "oxlint src test prisma.config.ts",
@@ -33,6 +33,7 @@
     "pdf-lib": "^1.17.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "prisma": "6.12.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.6.5"
   },
@@ -45,7 +46,6 @@
     "@types/supertest": "^6.0.3",
     "@types/swagger-ui-express": "^4.1.8",
     "oxlint": "^1.81.0",
-    "prisma": "6.12.0",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "~6.0.2",

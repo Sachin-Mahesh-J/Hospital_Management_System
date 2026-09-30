@@ -32,7 +32,7 @@ export type StartApplicationOptions = {
 
 function listen(app: Express, port: number): Promise<Server> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(port)
+    const server = app.listen(port, '0.0.0.0')
     server.once('listening', () => resolve(server))
     server.once('error', reject)
   })

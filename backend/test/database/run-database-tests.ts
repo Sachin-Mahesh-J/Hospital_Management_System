@@ -48,6 +48,7 @@ function run(command: string, args: string[], databaseUrl: string): void {
     env: {
       ...process.env,
       DATABASE_URL: databaseUrl,
+      DIRECT_URL: databaseUrl,
       HMS_DATABASE_TESTS: 'true',
     },
     stdio: 'inherit',

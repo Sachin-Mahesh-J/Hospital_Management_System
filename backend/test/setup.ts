@@ -9,6 +9,8 @@ if (process.env.HMS_DATABASE_TESTS === 'true') {
     'postgresql://postgres:test-only@localhost:5432/hms_test?schema=public'
 }
 
+process.env.DIRECT_URL ??= process.env.DATABASE_URL
+
 process.env.ALLOWED_ORIGINS = 'http://localhost:5173'
 process.env.LOG_LEVEL = 'silent'
 process.env.JWT_ACCESS_SECRET =

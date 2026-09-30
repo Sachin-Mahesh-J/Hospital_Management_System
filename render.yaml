@@ -1,0 +1,47 @@
+# Render Blueprint for the HMS Express API (ADR-005 / D-034).
+# Secret values are not stored in Git. Create the matching dashboard env vars
+# marked sync: false before the first deploy. Do not run schema changes at boot.
+services:
+  - type: web
+    name: hms-api
+    runtime: node
+    buildCommand: npm ci --include=dev && npm run prisma:generate -w backend && npm run build -w backend
+    startCommand: npm run start -w backend
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DOCUMENT_STORAGE_DRIVER
+        value: supabase
+      - key: LOG_LEVEL
+        value: info
+      - key: JWT_ISSUER
+        value: hms-api
+      - key: JWT_AUDIENCE
+        value: hms-web
+      - key: AUTH_COOKIE_NAME
+        value: hms_refresh
+      - key: HOSPITAL_TIMEZONE
+        value: Asia/Colombo
+      - key: DEFAULT_CURRENCY
+        value: LKR
+      - key: DOCUMENT_SIGNED_URL_TTL_SECONDS
+        value: "300"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        sync: false
