@@ -48,9 +48,9 @@ beforeEach(() => {
 })
 
 describe('schedule helpers', () => {
-  it('attaches an explicit offset to local date-time values', () => {
+  it('attaches the hospital timezone offset to date-time values', () => {
     const iso = localDateTimeToOffsetIso('2026-10-02T09:00')
-    expect(iso).toMatch(/^2026-10-02T09:00:00[+-]\d{2}:\d{2}$/)
+    expect(iso).toBe('2026-10-02T09:00:00+05:30')
   })
 })
 

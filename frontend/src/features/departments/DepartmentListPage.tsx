@@ -19,7 +19,12 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -32,6 +37,8 @@ export function DepartmentListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<DepartmentStatus | ''>('')
+  const { user } = useAuth()
+  const canCreateDepartment = hasPermission(user, 'department.create')
   const query = useDepartments({
     page,
     pageSize: 20,
@@ -58,9 +65,8 @@ export function DepartmentListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: 1 }}>
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: '2 1 280px', minWidth: 0 }}>
             <TextField
               defaultValue={search}
               fullWidth
@@ -71,7 +77,7 @@ export function DepartmentListPage() {
             />
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="department-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -88,8 +94,7 @@ export function DepartmentListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading departments" />}
       {query.isError && (
@@ -100,8 +105,19 @@ export function DepartmentListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canCreateDepartment ? (
+              <Button component={Link} to="/departments/new" variant="contained">
+                Create department
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateDepartment
+              ? 'Adjust the search or status filter, or create a department.'
+              : 'No departments match the current filters.'
+          }
           title="No departments found"
-          description="Adjust the search or status filter, or create a department."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -121,7 +137,7 @@ export function DepartmentListPage() {
                   <TableRow hover key={department.id}>
                     <TableCell>{department.code}</TableCell>
                     <TableCell>{department.name}</TableCell>
-                    <TableCell>{department.status}</TableCell>
+                    <TableCell><StatusChip value={department.status} /></TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/departments/${department.id}`}>
                         View

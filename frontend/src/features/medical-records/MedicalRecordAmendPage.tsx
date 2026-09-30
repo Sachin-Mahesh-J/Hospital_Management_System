@@ -1,8 +1,7 @@
 import { Button } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { MedicalRecordForm } from './MedicalRecordForm'
 import { useAmendMedicalRecord, useMedicalRecord } from './hooks'
@@ -15,10 +14,13 @@ export function MedicalRecordAmendPage() {
   const navigate = useNavigate()
   const { notify } = useNotification()
 
-  if (query.isLoading) return <LoadingState label="Loading medical record" />
+  if (query.isLoading) {
+    return <PageLoading title="Amend medical record" label="Loading medical record information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Amend medical record"
         message={query.error instanceof ApiError ? query.error.message : 'Medical record could not be loaded.'}
         onRetry={() => void query.refetch()}
       />

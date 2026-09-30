@@ -1,8 +1,7 @@
 import { Button } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { usePatient, useUpdatePatient } from './hooks'
 import { PatientForm } from './PatientForm'
@@ -15,10 +14,13 @@ export function PatientEditPage() {
   const navigate = useNavigate()
   const { notify } = useNotification()
 
-  if (patientQuery.isLoading) return <LoadingState label="Loading patient" />
+  if (patientQuery.isLoading) {
+    return <PageLoading title="Edit patient" label="Loading patient information..." />
+  }
   if (patientQuery.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Edit patient"
         message={patientQuery.error instanceof ApiError ? patientQuery.error.message : 'Patient could not be loaded.'}
         onRetry={() => void patientQuery.refetch()}
       />

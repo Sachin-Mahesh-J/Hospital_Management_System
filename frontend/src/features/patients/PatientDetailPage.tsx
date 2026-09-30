@@ -1,25 +1,32 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import { Alert, Button, Divider, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { ErrorState, LoadingState } from '../../shared/components/StateViews'
 import { PatientDocumentsPanel } from '../documents/PatientDocumentsPanel'
 import { useMedicalRecords } from '../medical-records/hooks'
 import { usePatient } from './hooks'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
 
 function PatientMedicalHistory({ patientId }: { patientId: string }) {
   const query = useMedicalRecords({ page: 1, pageSize: 10, patientId })
-  if (query.isLoading) return <LoadingState label="Loading medical history" />
+  if (query.isLoading) return <LoadingState label="Loading medical history..." />
   if (query.isError) {
     return (
       <ErrorState
@@ -43,7 +50,10 @@ function PatientMedicalHistory({ patientId }: { patientId: string }) {
               sx={{ justifyContent: 'flex-start' }}
               to={`/medical-records/${record.id}`}
             >
-              {new Date(record.occurredAt).toLocaleString()} — {record.status}
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <span>{formatHospitalDateTime(record.occurredAt)}</span>
+                <StatusChip value={record.status} />
+              </Stack>
             </Button>
           ))}
         </Stack>
@@ -56,10 +66,13 @@ export function PatientDetailPage() {
   const { patientId = '' } = useParams()
   const query = usePatient(patientId)
 
-  if (query.isLoading) return <LoadingState label="Loading patient" />
+  if (query.isLoading) {
+    return <PageLoading title="Patient details" label="Loading patient information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Patient details"
         message={query.error instanceof ApiError ? query.error.message : 'Patient could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -87,7 +100,7 @@ export function PatientDetailPage() {
         <Stack spacing={2.5}>
           <Typography component="h2" variant="h6">Current information</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={patient.status} />
+            <Detail label="Status" value={<StatusChip value={patient.status} />} />
             <Detail label="Date of birth" value={patient.dateOfBirth ? `${patient.dateOfBirth} (${patient.dateOfBirthPrecision})` : 'Unknown'} />
             <Detail label="Sex at registration" value={patient.sexAtRegistration?.replace('_', ' ') ?? null} />
           </Stack>

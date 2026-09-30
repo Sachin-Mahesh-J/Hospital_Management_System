@@ -6,9 +6,9 @@ Status: Implemented (Milestone 11, D-024)
 
 This module supports pharmacist stock receiving, authorized stock adjustments,
 paginated inventory and movement reading, prescription dispensing (including
-partial dispensing), and full dispense reversal. The medicine catalog remains
-application-read-only. Billing writes, reports/analytics, expiry jobs, and
-catalog administration are not implemented.
+partial dispensing), and full dispense reversal. Medicine catalogue
+administration is implemented separately by D-036. Billing writes,
+reports/analytics, and expiry jobs are not implemented here.
 
 The Prisma schema and initial migration were not changed. Available stock is
 derived from the append-only `stock_movements` ledger. There is no stored
@@ -26,8 +26,8 @@ Versioned endpoints:
 - `POST /api/v1/prescriptions/:id/dispenses/:dispenseId/reverse`
 
 Existing prescription list/detail and medicine catalog endpoints are reused.
-There is no catalog write, movement PATCH/DELETE, FIFO/FEFO policy API, billing
-write, or reporting endpoint.
+Catalogue write/deactivate/reactivate is owned by D-036. There is no movement
+PATCH/DELETE, FIFO/FEFO policy API, billing write, or reporting endpoint.
 
 Routes authenticate and authorize before controllers run. Controllers handle HTTP,
 services enforce identity mapping, stock invariants, prescription status
@@ -121,7 +121,7 @@ movements after those locks, not from a cached quantity.
 
 | Permission | Administrator | Doctor | Nurse | Receptionist | Laboratory Staff | Pharmacist | Accountant |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `medicine.read` | no | yes | no | no | no | yes | no |
+| `medicine.read` | yes | yes | no | no | no | yes | no |
 | `inventory.read` | yes | no | no | no | no | yes | no |
 | `stock.receive` | no | no | no | no | no | yes | no |
 | `stock.adjust` | yes | no | no | no | no | yes | no |
@@ -130,9 +130,10 @@ movements after those locks, not from a cached quantity.
 | `prescription.dispense` | no | no | no | no | no | yes | no |
 | `prescription.reverse` | yes | no | no | no | no | yes | no |
 
-There is no `medicine.create`, `medicine.update`, `stock.delete`, or pharmacist
-`prescription.cancel`. `patient.read` is not pharmacy access. Lists are
-permission-wide with no ownership filter.
+Catalogue write permissions are documented in
+`docs/development/medicine-catalogue.md`. There is no `stock.delete` or
+pharmacist `prescription.cancel`. `patient.read` is not pharmacy access. Lists
+are permission-wide with no ownership filter.
 
 The backend enforces every assignment. Frontend route and control gating is
 usability only. Re-run `npm run sync:permissions -w backend` (or
@@ -143,6 +144,7 @@ present) to grant these permissions on an existing database.
 
 Routes:
 
+- `/medicines` — catalogue list/create/edit (D-036; `medicine.read` and write permissions)
 - `/pharmacy/inventory` — inventory list (`inventory.read`)
 - `/pharmacy/inventory/receive` — receiving (`stock.receive`)
 - `/pharmacy/inventory/adjust` — adjustment (`stock.adjust`)
@@ -150,8 +152,10 @@ Routes:
 - `/prescriptions` and `/prescriptions/:prescriptionId` — existing prescription
   read, plus dispense/reverse controls gated by permission
 
-AppShell shows Inventory for `inventory.read` and Movements for
-`stock.movement.read`. Prescriptions remains `prescription.read`.
+AppShell shows Medicines for `medicine.read`, Inventory for `inventory.read`,
+and Stock movements for `stock.movement.read`. Prescriptions remains
+`prescription.read`. Receiving and new-prescription forms request
+`status=active`.
 
 TanStack Query keys:
 
@@ -183,7 +187,7 @@ creates and uses local `hms_test` and refuses production, Supabase, or
 
 The following remain unresolved and are not implemented:
 
-- Medicine catalog write/deactivate APIs
+- Medicine catalog write/deactivate APIs (implemented by D-036)
 - Near-expiry alerts, expiry jobs, and dashboard analytics
 - FIFO/FEFO as hospital policy
 - Damaged-stock `disposal` workflow beyond using the existing movement type in

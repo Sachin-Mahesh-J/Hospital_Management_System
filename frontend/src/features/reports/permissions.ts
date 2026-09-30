@@ -18,7 +18,7 @@ export const reportLinks = [
     permission: 'report.appointment.read',
     path: '/reports/appointments',
     label: 'Appointment report',
-    description: 'Appointments in a hospital-local date range.',
+    description: 'Appointments in a selected date range.',
   },
   {
     permission: 'report.revenue.read',

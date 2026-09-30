@@ -10,6 +10,7 @@ import {
   Stack,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
@@ -19,26 +20,33 @@ import { Can } from '../../auth/Can'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
 import { Page } from '../../shared/components/Page'
+import { formatStatusLabel } from '../../shared/components/formatStatusLabel'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../shared/components/StateViews'
+import {
+  formatHospitalTime,
+  hospitalToday,
+  isHospitalToday,
+} from '../../shared/datetime/hospitalTime'
 import { useDoctors } from '../doctors/hooks'
 import { fetchAppointments } from './api'
 import {
-  addDays,
-  appointmentOverlapsLocalDay,
+  appointmentOverlapsHospitalDay,
   calendarRange,
   CALENDAR_END_HOUR,
   CALENDAR_START_HOUR,
   durationMinutes,
+  formatCalendarHeading,
   formatDayHeading,
   HOUR_HEIGHT_PX,
-  minutesFromDayStart,
-  slotStart,
-  startOfLocalDay,
-  toLocalDateTimeValue,
+  hospitalSlotDateTimeValue,
+  minutesFromHospitalDayStart,
+  shiftCalendarAnchor,
   type CalendarView,
 } from './calendarRange'
 import { useQuery } from '@tanstack/react-query'
@@ -47,10 +55,10 @@ import { doctorLabel, patientLabel, type Appointment } from './types'
 
 function useCalendarAppointments(
   view: CalendarView,
-  anchor: Date,
+  anchorDate: string,
   doctorId: string,
 ) {
-  const range = calendarRange(anchor, view)
+  const range = calendarRange(anchorDate, view)
   return useQuery({
     queryKey: [...appointmentKeys.lists(), 'calendar', view, range.from.toISOString(), doctorId],
     queryFn: async () => {
@@ -86,40 +94,95 @@ function AppointmentBlock({
   day,
 }: {
   appointment: Appointment
-  day: Date
+  day: string
 }) {
-  const startMinutes = Math.max(0, minutesFromDayStart(appointment.startsAt, day))
+  const startMinutes = Math.max(0, minutesFromHospitalDayStart(appointment.startsAt, day))
   const gridStart = CALENDAR_START_HOUR * 60
   const gridEnd = CALENDAR_END_HOUR * 60
   const topMinutes = Math.max(gridStart, startMinutes)
   const endMinutes = Math.min(
     gridEnd,
-    minutesFromDayStart(appointment.endsAt, day),
+    minutesFromHospitalDayStart(appointment.endsAt, day),
   )
   const heightMinutes = Math.max(15, endMinutes - topMinutes)
+  const heightPx = (heightMinutes / 60) * HOUR_HEIGHT_PX
+  const patient = patientLabel(appointment.patient)
+  const timeRange = `${formatHospitalTime(appointment.startsAt)}–${formatHospitalTime(appointment.endsAt)}`
+  const statusLabel = formatStatusLabel(appointment.status)
+  const doctor = doctorLabel(appointment.doctor)
+  const fullLabel = [
+    patient,
+    timeRange,
+    statusLabel,
+    doctor,
+    appointment.overlapsApprovedLeave ? 'Overlaps approved leave' : null,
+  ].filter(Boolean).join('. ')
+
   return (
-    <Box
-      component={Link}
-      to={`/appointments/${appointment.id}`}
-      sx={{
-        position: 'absolute',
-        left: 4,
-        right: 4,
-        top: ((topMinutes - gridStart) / 60) * HOUR_HEIGHT_PX,
-        height: (heightMinutes / 60) * HOUR_HEIGHT_PX,
-        bgcolor: appointment.overlapsApprovedLeave ? 'warning.light' : 'primary.light',
-        color: 'text.primary',
-        borderRadius: 1,
-        px: 0.5,
-        overflow: 'hidden',
-        textDecoration: 'none',
-        fontSize: 12,
-        zIndex: 1,
-      }}
+    <Tooltip
+      describeChild
+      title={
+        <Box>
+          <Typography variant="subtitle2">{patient}</Typography>
+          <Typography variant="body2">{timeRange}</Typography>
+          <Typography variant="body2">{statusLabel}</Typography>
+          <Typography variant="body2">{doctor}</Typography>
+          {appointment.overlapsApprovedLeave && (
+            <Typography variant="body2">Overlaps approved leave</Typography>
+          )}
+        </Box>
+      }
     >
-      {patientLabel(appointment.patient)} · {doctorLabel(appointment.doctor)}
-      {appointment.overlapsApprovedLeave ? ' · leave overlap' : ''}
-    </Box>
+      <Box
+        aria-label={fullLabel}
+        component={Link}
+        to={`/appointments/${appointment.id}`}
+        sx={{
+          position: 'absolute',
+          left: 4,
+          right: 4,
+          top: ((topMinutes - gridStart) / 60) * HOUR_HEIGHT_PX,
+          height: heightPx,
+          minHeight: 18,
+          bgcolor: appointment.overlapsApprovedLeave ? 'warning.light' : 'primary.light',
+          color: 'text.primary',
+          borderRadius: 1,
+          px: 0.75,
+          py: 0.25,
+          overflow: 'hidden',
+          textDecoration: 'none',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          gap: 0.125,
+          outlineOffset: 2,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+          },
+        }}
+      >
+        <Typography
+          component="span"
+          noWrap
+          sx={{ fontWeight: 600, lineHeight: 1.2 }}
+          variant="caption"
+        >
+          {patient}
+        </Typography>
+        {heightPx >= 32 && (
+          <Typography component="span" noWrap sx={{ lineHeight: 1.2 }} variant="caption">
+            {timeRange}
+          </Typography>
+        )}
+        {heightPx >= 46 && (
+          <Typography component="span" noWrap sx={{ lineHeight: 1.2 }} variant="caption">
+            {statusLabel}
+          </Typography>
+        )}
+      </Box>
+    </Tooltip>
   )
 }
 
@@ -129,7 +192,7 @@ function DayColumn({
   canCreate,
   doctorId,
 }: {
-  day: Date
+  day: string
   appointments: Appointment[]
   canCreate: boolean
   doctorId: string
@@ -140,24 +203,36 @@ function DayColumn({
     (_, index) => CALENDAR_START_HOUR + index,
   )
   const dayAppointments = appointments.filter((appointment) =>
-    appointmentOverlapsLocalDay(appointment.startsAt, appointment.endsAt, day),
+    appointmentOverlapsHospitalDay(appointment.startsAt, appointment.endsAt, day),
   )
+  const today = isHospitalToday(day)
   return (
-    <Box sx={{ position: 'relative', minWidth: 160, flex: 1, borderLeft: 1, borderColor: 'divider' }}>
-      <Typography sx={{ px: 1, py: 0.5 }} variant="subtitle2">
-        {formatDayHeading(day)}
-      </Typography>
+    <Box
+      aria-current={today ? 'date' : undefined}
+      sx={{ position: 'relative', minWidth: 160, flex: 1, borderLeft: 1, borderColor: today ? 'primary.main' : 'divider' }}
+    >
+      <Box
+        sx={{
+          px: 1,
+          py: 0.5,
+          bgcolor: today ? 'primary.main' : undefined,
+          color: today ? 'primary.contrastText' : undefined,
+        }}
+      >
+        <Typography sx={{ fontWeight: today ? 700 : 600 }} variant="subtitle2">
+          {formatDayHeading(day)}
+          {today ? ' · Today' : ''}
+        </Typography>
+      </Box>
       <Box sx={{ position: 'relative', height: hours.length * HOUR_HEIGHT_PX }}>
         {hours.map((hour) => (
           <Box
             key={hour}
             onClick={() => {
               if (!canCreate) return
-              const start = slotStart(day, hour)
-              const end = slotStart(day, hour + 1)
               const params = new URLSearchParams({
-                startsAt: toLocalDateTimeValue(start),
-                endsAt: toLocalDateTimeValue(end),
+                startsAt: hospitalSlotDateTimeValue(day, hour),
+                endsAt: hospitalSlotDateTimeValue(day, hour + 1),
               })
               if (doctorId) params.set('doctorId', doctorId)
               navigate(`/appointments/new?${params.toString()}`)
@@ -184,32 +259,18 @@ function DayColumn({
 
 export function AppointmentCalendarPage() {
   const [view, setView] = useState<CalendarView>('week')
-  const [anchor, setAnchor] = useState(() => startOfLocalDay(new Date()))
+  const [anchorDate, setAnchorDate] = useState(() => hospitalToday())
   const [doctorId, setDoctorId] = useState('')
   const { user } = useAuth()
   const canCreate = hasPermission(user, 'appointment.create')
   const canReadDoctors = hasPermission(user, 'doctor.read')
   const doctors = useDoctors({ page: 1, pageSize: 100, status: 'active', employmentStatus: 'active' })
-  const query = useCalendarAppointments(view, anchor, doctorId)
-  const days = useMemo(() => {
-    const range = calendarRange(anchor, view)
-    if (view === 'day') return [range.from]
-    if (view === 'week') {
-      return Array.from({ length: 7 }, (_, index) => addDays(range.from, index))
-    }
-    return Array.from({ length: 42 }, (_, index) => addDays(range.from, index))
-  }, [anchor, view])
-
-  const shift = (direction: number) => {
-    if (view === 'day') setAnchor((current) => addDays(current, direction))
-    else if (view === 'week') setAnchor((current) => addDays(current, direction * 7))
-    else setAnchor((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1))
-  }
+  const query = useCalendarAppointments(view, anchorDate, doctorId)
+  const days = useMemo(() => calendarRange(anchorDate, view).days, [anchorDate, view])
 
   return (
     <Page
       title="Appointment calendar"
-      description="Day, week, and month views use actual start and end times. Drag-and-drop rescheduling is not available. Use the existing reschedule workflow."
       actions={
         <Stack direction="row" spacing={1}>
           <Button component={Link} to="/appointments">List</Button>
@@ -219,8 +280,7 @@ export function AppointmentCalendarPage() {
         </Stack>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
+      <FilterBar>
           <ToggleButtonGroup
             exclusive
             onChange={(_event, value: CalendarView | null) => {
@@ -233,12 +293,18 @@ export function AppointmentCalendarPage() {
             <ToggleButton value="week">Week</ToggleButton>
             <ToggleButton value="month">Month</ToggleButton>
           </ToggleButtonGroup>
-          <Button onClick={() => shift(-1)}>Previous</Button>
-          <Typography>{anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric', day: 'numeric' })}</Typography>
-          <Button onClick={() => shift(1)}>Next</Button>
-          <Button onClick={() => setAnchor(startOfLocalDay(new Date()))}>Today</Button>
+          <Button onClick={() => setAnchorDate((current) => shiftCalendarAnchor(current, view, -1))}>
+            Previous
+          </Button>
+          <Typography sx={{ minWidth: 0 }}>
+            {formatCalendarHeading(anchorDate, view)}
+          </Typography>
+          <Button onClick={() => setAnchorDate((current) => shiftCalendarAnchor(current, view, 1))}>
+            Next
+          </Button>
+          <Button onClick={() => setAnchorDate(hospitalToday())}>Today</Button>
           {canReadDoctors && (
-            <FormControl size="small" sx={{ minWidth: 220 }}>
+            <FormControl size="small" sx={filterControlSx}>
               <InputLabel id="calendar-doctor">Doctor</InputLabel>
               <Select
                 label="Doctor"
@@ -255,8 +321,7 @@ export function AppointmentCalendarPage() {
               </Select>
             </FormControl>
           )}
-        </Stack>
-      </Paper>
+      </FilterBar>
       <Alert severity="info">
         Approved leave does not cancel existing appointments. Highlighted blocks overlap a doctor’s approved leave
         and should be cancelled or rescheduled through the existing workflows. Pending, rejected, and cancelled leave
@@ -273,65 +338,109 @@ export function AppointmentCalendarPage() {
         <Alert severity="warning">The calendar shows the first 1,000 appointments in this range.</Alert>
       )}
       {query.data && query.data.appointments.length === 0 && view === 'month' && (
-        <EmptyState title="No appointments in this range" description="Change the doctor filter or book an appointment." />
+        <EmptyState
+          action={
+            canCreate ? (
+              <Button component={Link} to="/appointments/new" variant="contained">
+                Book appointment
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreate
+              ? 'No appointments match this calendar range. Change the doctor filter or book an appointment.'
+              : 'No appointments match this calendar range. Change the doctor filter if one is applied.'
+          }
+          title="No appointments in this range"
+        />
       )}
       {query.data && view !== 'month' && (
         <Paper sx={{ overflow: 'auto' }}>
-          <Stack direction="row">
+          <Stack direction="row" sx={{ minWidth: 0 }}>
             {days.map((day) => (
               <DayColumn
                 appointments={query.data.appointments}
                 canCreate={canCreate}
                 day={day}
                 doctorId={doctorId}
-                key={day.toISOString()}
+                key={day}
               />
             ))}
           </Stack>
         </Paper>
       )}
       {query.data && view === 'month' && (
-        <Paper sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+        <Paper sx={{ overflowX: 'auto' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', minWidth: 770 }}>
           {days.map((day) => {
             const items = query.data.appointments.filter((appointment) =>
-              appointmentOverlapsLocalDay(appointment.startsAt, appointment.endsAt, day),
+              appointmentOverlapsHospitalDay(appointment.startsAt, appointment.endsAt, day),
             )
+            const today = isHospitalToday(day)
+            const inMonth = day.slice(0, 7) === anchorDate.slice(0, 7)
+            const dayNumber = Number(day.slice(8, 10))
             return (
               <Box
-                key={day.toISOString()}
+                aria-current={today ? 'date' : undefined}
+                key={day}
                 onClick={() => {
-                  setAnchor(startOfLocalDay(day))
+                  setAnchorDate(day)
                   setView('day')
                 }}
                 sx={{
                   minHeight: 120,
                   border: 1,
-                  borderColor: 'divider',
+                  borderColor: today ? 'primary.main' : 'divider',
                   p: 1,
                   cursor: 'pointer',
-                  bgcolor: day.getMonth() === anchor.getMonth() ? 'background.paper' : 'action.hover',
+                  bgcolor: today ? 'action.selected' : inMonth ? 'background.paper' : 'action.hover',
                 }}
               >
-                <Typography variant="caption">{day.getDate()}</Typography>
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontWeight: today ? 700 : 400 }} variant="caption">
+                    {dayNumber}
+                  </Typography>
+                  {today && (
+                    <Typography color="primary" variant="caption">
+                      Today
+                    </Typography>
+                  )}
+                </Stack>
                 <Stack spacing={0.5}>
-                  {items.slice(0, 4).map((appointment) => (
-                    <Button
-                      component={Link}
-                      key={appointment.id}
-                      onClick={(event) => event.stopPropagation()}
-                      size="small"
-                      sx={{
-                        justifyContent: 'flex-start',
-                        bgcolor: appointment.overlapsApprovedLeave ? 'warning.light' : undefined,
-                      }}
-                      to={`/appointments/${appointment.id}`}
-                    >
-                      {new Date(appointment.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {' '}
-                      ({durationMinutes(appointment.startsAt, appointment.endsAt)}m)
-                      {appointment.overlapsApprovedLeave ? ' leave' : ''}
-                    </Button>
-                  ))}
+                  {items.slice(0, 4).map((appointment) => {
+                    const patient = patientLabel(appointment.patient)
+                    const time = formatHospitalTime(appointment.startsAt)
+                    const statusLabel = formatStatusLabel(appointment.status)
+                    const monthLabel = [
+                      patient,
+                      `${time} (${durationMinutes(appointment.startsAt, appointment.endsAt)}m)`,
+                      statusLabel,
+                      appointment.overlapsApprovedLeave ? 'Overlaps approved leave' : null,
+                    ]
+                      .filter(Boolean)
+                      .join('. ')
+                    return (
+                      <Tooltip describeChild key={appointment.id} title={monthLabel}>
+                        <Button
+                          aria-label={monthLabel}
+                          component={Link}
+                          onClick={(event) => event.stopPropagation()}
+                          size="small"
+                          sx={{
+                            justifyContent: 'flex-start',
+                            minWidth: 0,
+                            px: 0.75,
+                            bgcolor: appointment.overlapsApprovedLeave ? 'warning.light' : undefined,
+                          }}
+                          to={`/appointments/${appointment.id}`}
+                        >
+                          <Typography component="span" noWrap sx={{ display: 'block', width: '100%' }} variant="caption">
+                            {time} {patient}
+                          </Typography>
+                        </Button>
+                      </Tooltip>
+                    )
+                  })}
                   {items.length > 4 && (
                     <Typography variant="caption">+{items.length - 4} more</Typography>
                   )}
@@ -339,6 +448,7 @@ export function AppointmentCalendarPage() {
               </Box>
             )
           })}
+        </Box>
         </Paper>
       )}
     </Page>

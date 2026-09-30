@@ -62,6 +62,12 @@ engineering policy for this milestone, not a claim from the source PDF.
   `docs/development/medical-records.md`. Clinical writes derive employee/doctor
   identity from the database; they do not trust client-supplied author IDs and do
   not put employee or doctor identity into the JWT.
+- Medicine catalogue administration currently authorizes `medicine.read`,
+  `medicine.create`, `medicine.update`, `medicine.deactivate`, and
+  `medicine.reactivate` as documented in
+  `docs/development/medicine-catalogue.md`. Administrator owns catalogue write.
+  Doctor and Pharmacist may read. Inactive medicines cannot be newly prescribed,
+  received, or dispensed.
 - Laboratory Management currently authorizes `lab_test.read`, `lab_request.read`,
   `lab_request.create`, `lab_sample.collect`, and `lab_result.enter` as documented
   in `docs/development/laboratory-management.md`. Requesting-doctor, collector,
@@ -73,7 +79,7 @@ engineering policy for this milestone, not a claim from the source PDF.
   `docs/development/pharmacy-management.md`. Dispensing identity is derived from
   the database. Client-supplied actor IDs are rejected. Administrator pharmacy
   access excludes receiving and dispensing. `patient.read` is not pharmacy
-  access.
+  access. Catalogue write is D-036, not a second pharmacy permission system.
 - Billing currently authorizes `invoice.read`, `invoice.create`,
   `invoice.update`, `invoice.issue`, `invoice.void`, `payment.read`,
   `payment.create`, and `payment.reverse` as documented in

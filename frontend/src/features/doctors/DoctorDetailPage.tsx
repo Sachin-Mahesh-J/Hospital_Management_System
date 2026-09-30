@@ -1,17 +1,22 @@
 import { Alert, Button, Divider, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { DoctorSchedulePanel } from '../doctor-schedules/DoctorSchedulePanel'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useDoctor } from './hooks'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -20,10 +25,13 @@ export function DoctorDetailPage() {
   const { doctorId = '' } = useParams()
   const query = useDoctor(doctorId)
 
-  if (query.isLoading) return <LoadingState label="Loading doctor" />
+  if (query.isLoading) {
+    return <PageLoading title="Doctor" label="Loading doctor information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Doctor"
         message={query.error instanceof ApiError ? query.error.message : 'Doctor could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -50,7 +58,7 @@ export function DoctorDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Doctor status" value={doctor.status} />
+            <Detail label="Doctor status" value={<StatusChip value={doctor.status} />} />
             <Detail label="Specialization" value={doctor.specialization} />
             <Detail
               label="Department"
@@ -60,7 +68,7 @@ export function DoctorDetailPage() {
           <Divider />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
             <Detail label="Employee number" value={doctor.employee.employeeNumber} />
-            <Detail label="Employment status" value={doctor.employee.employmentStatus} />
+            <Detail label="Employment status" value={<StatusChip value={doctor.employee.employmentStatus} />} />
             <Detail label="Contact extension" value={doctor.contactExtension} />
           </Stack>
           <Divider />

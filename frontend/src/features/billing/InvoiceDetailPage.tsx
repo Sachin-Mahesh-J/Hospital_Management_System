@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -26,8 +27,11 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { ContextHelp } from '../../shared/components/ContextHelp'
+import { FormSection } from '../../shared/components/FormSection'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
+import { LoadingState } from '../../shared/components/StateViews'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import {
   useCreatePayment,
@@ -69,10 +73,13 @@ export function InvoiceDetailPage() {
   const [selectedLabItems, setSelectedLabItems] = useState<string[]>([])
   const [selectedDispenses, setSelectedDispenses] = useState<string[]>([])
 
-  if (query.isLoading) return <LoadingState label="Loading invoice" />
+  if (query.isLoading) {
+    return <PageLoading title="Invoice" label="Loading invoice information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Invoice"
         message={query.error instanceof ApiError ? query.error.message : 'Invoice could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -97,10 +104,12 @@ export function InvoiceDetailPage() {
 
   return (
     <Page
+      help="Voiding marks the invoice void with a reason; it does not delete line items. Issued invoices cannot be edited—create a new invoice after void if needed."
+      helpLabel="Invoice voiding"
       title={invoice.invoiceNumber}
-      description="Server-calculated totals are authoritative. Issued invoices cannot be edited. Corrections use void and a new invoice."
+      description="Issued invoices cannot be edited."
       actions={
-        <Stack className="no-print" direction="row" spacing={1}>
+        <Stack className="no-print" direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
           <Button component={Link} to="/billing">Back to invoices</Button>
           <Can permission="invoice.issue">
             {isDraft && (
@@ -115,7 +124,7 @@ export function InvoiceDetailPage() {
           </Can>
           <Can permission="invoice.void">
             {!isVoid && (
-              <Button color="error" onClick={() => setVoidOpen(true)}>
+              <Button color="error" onClick={() => setVoidOpen(true)} variant="outlined">
                 Void invoice
               </Button>
             )}
@@ -127,10 +136,13 @@ export function InvoiceDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Typography><strong>Patient:</strong> {patientLabel(invoice.patient)}</Typography>
-          <Typography><strong>Status:</strong> {invoice.status}</Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography><strong>Status:</strong></Typography>
+            <StatusChip value={invoice.status} />
+          </Stack>
           <Typography><strong>Currency:</strong> {invoice.currency}</Typography>
           <Typography><strong>Created by:</strong> {invoice.createdBy.username}</Typography>
-          <Typography><strong>Created:</strong> {new Date(invoice.createdAt).toLocaleString()}</Typography>
+          <Typography><strong>Created:</strong> {formatHospitalDateTime(invoice.createdAt)}</Typography>
         </Stack>
       </Paper>
       <TableContainer component={Paper}>
@@ -172,7 +184,7 @@ export function InvoiceDetailPage() {
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Edit draft items</Typography>
             <Typography color="text.secondary" sx={{ mb: 2 }}>
-              Replace draft lines and save. The server recalculates totals. Issued invoices cannot be edited.
+              Replace draft lines and save. Issued invoices cannot be edited.
             </Typography>
             {sourcesQuery.isLoading && <LoadingState label="Loading billable sources" />}
             {sourcesQuery.data?.consultations.map((source) => (
@@ -189,7 +201,7 @@ export function InvoiceDetailPage() {
                     }}
                   />
                   <Typography>
-                    {new Date(source.startsAt).toLocaleString()} — {source.doctorDisplayName}
+                    {formatHospitalDateTime(source.startsAt)} — {source.doctorDisplayName}
                   </Typography>
                 </Stack>
                 <TextField
@@ -272,8 +284,8 @@ export function InvoiceDetailPage() {
       <Can permission="payment.create">
         {canPay && (
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Record payment</Typography>
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <FormSection title="Record payment">
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'flex-end' } }}>
               <TextField
                 label="Amount"
                 onChange={(event) => setAmount(event.target.value)}
@@ -316,21 +328,32 @@ export function InvoiceDetailPage() {
                 Record payment
               </Button>
             </Stack>
+            </FormSection>
           </Paper>
         )}
       </Can>
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>Payments</Typography>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 1 }}>
+          <Typography component="h2" variant="h6">Payments</Typography>
+          <ContextHelp
+            description="Each payment can be reversed while recorded and not already a reversal. Reversal requires a reason and updates invoice balances. Reversals create a compensating row; they do not delete the original payment."
+            label="Payment reversal"
+          />
+        </Stack>
         {invoice.payments.length === 0 && (
           <Typography color="text.secondary">No payments recorded.</Typography>
         )}
         {invoice.payments.map((payment) => (
           <Stack key={payment.id} spacing={1} sx={{ py: 1 }}>
-            <Typography>
-              {payment.paymentNumber} — {moneyLabel(payment.amount, payment.currency)} {payment.method} ({payment.status})
-            </Typography>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+              <Typography>
+                {payment.paymentNumber} — {moneyLabel(payment.amount, payment.currency)}
+              </Typography>
+              <StatusChip value={payment.method} />
+              <StatusChip value={payment.status} />
+            </Stack>
             <Typography color="text.secondary" variant="body2">
-              {new Date(payment.paidAt).toLocaleString()} by {payment.receivedBy.username}
+              {formatHospitalDateTime(payment.paidAt)} by {payment.receivedBy.username}
               {payment.reversesPaymentId ? ' (reversal)' : ''}
             </Typography>
             <Stack direction="row" spacing={1}>
@@ -346,8 +369,10 @@ export function InvoiceDetailPage() {
               <Can permission="payment.reverse">
                 {payment.status === 'recorded' && !payment.reversesPaymentId && !isVoid && (
                   <Button
-                    size="small"
+                    color="error"
                     onClick={() => setReversePaymentId(payment.id)}
+                    size="small"
+                    variant="outlined"
                   >
                     Reverse
                   </Button>

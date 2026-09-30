@@ -75,6 +75,6 @@ describe('PatientDocumentsPanel', () => {
     renderPanel(['patient_document.read', 'patient_document.create'])
     fireEvent.click(await screen.findByRole('button', { name: 'Upload document' }))
     expect(screen.getByRole('heading', { name: 'Upload document' })).toBeVisible()
-    expect(screen.getByText(/immutable/i)).toBeVisible()
+    expect(screen.getByText(/cannot be replaced/i)).toBeVisible()
   })
 })

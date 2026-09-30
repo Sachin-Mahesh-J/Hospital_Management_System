@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -18,6 +19,8 @@ import {
 } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
 import {
@@ -117,6 +120,7 @@ export function AppointmentForm({
     <Paper sx={{ p: { xs: 2, md: 3 } }}>
       <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
         {error && <Alert severity="error">{error}</Alert>}
+        <FormSection title="People">
         {lockPatient && appointment ? (
           <TextField
             disabled
@@ -235,9 +239,9 @@ export function AppointmentForm({
                   <TableBody>
                     {schedules.data.data.map((schedule) => (
                       <TableRow key={schedule.id}>
-                        <TableCell>{new Date(schedule.startsAt).toLocaleString()}</TableCell>
-                        <TableCell>{new Date(schedule.endsAt).toLocaleString()}</TableCell>
-                        <TableCell>{schedule.status}</TableCell>
+                        <TableCell>{formatHospitalDateTime(schedule.startsAt)}</TableCell>
+                        <TableCell>{formatHospitalDateTime(schedule.endsAt)}</TableCell>
+                        <TableCell><StatusChip value={schedule.status} /></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -246,6 +250,7 @@ export function AppointmentForm({
             )}
           </Stack>
         )}
+        </FormSection>
         <Button disabled={isPending} type="submit" variant="contained">
           {isPending ? 'Saving…' : submitLabel}
         </Button>

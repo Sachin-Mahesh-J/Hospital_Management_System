@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   FormControl,
@@ -21,7 +22,10 @@ import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -48,6 +52,7 @@ export function AppointmentListPage() {
   const { user } = useAuth()
   const canReadDoctors = hasPermission(user, 'doctor.read')
   const canReadPatients = hasPermission(user, 'patient.read')
+  const canBookAppointment = hasPermission(user, 'appointment.create')
   const doctors = useDoctors({ page: 1, pageSize: 100 })
   const patients = usePatients({ page: 1, pageSize: 100 })
   const query = useAppointments({
@@ -73,7 +78,7 @@ export function AppointmentListPage() {
   return (
     <Page
       title="Appointments"
-      description="Book, review, cancel, and reschedule outpatient appointments. Times are shown in the browser locale."
+      description="Book, review, cancel, and reschedule outpatient appointments."
       actions={
         <Stack direction="row" spacing={1}>
           <Button component={Link} to="/appointments/calendar">
@@ -87,28 +92,26 @@ export function AppointmentListPage() {
         </Stack>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="appointment-status-filter">Status</InputLabel>
-              <Select
-                label="Status"
-                labelId="appointment-status-filter"
-                onChange={(event) => {
-                  setStatus(event.target.value as AppointmentStatus | '')
-                  setPage(1)
-                }}
-                value={status}
-              >
-                <MenuItem value="">All statuses</MenuItem>
-                {appointmentStatuses.map((value) => (
-                  <MenuItem key={value} value={value}>{value}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+      <FilterBar>
+          <FormControl size="small" sx={filterControlSx}>
+            <InputLabel id="appointment-status-filter">Status</InputLabel>
+            <Select
+              label="Status"
+              labelId="appointment-status-filter"
+              onChange={(event) => {
+                setStatus(event.target.value as AppointmentStatus | '')
+                setPage(1)
+              }}
+              value={status}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              {appointmentStatuses.map((value) => (
+                <MenuItem key={value} value={value}>{value}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
             {canReadDoctors && (
-              <FormControl size="small" sx={{ minWidth: 180 }}>
+              <FormControl size="small" sx={filterControlSx}>
                 <InputLabel id="appointment-doctor-filter">Doctor</InputLabel>
                 <Select
                   label="Doctor"
@@ -129,7 +132,7 @@ export function AppointmentListPage() {
               </FormControl>
             )}
             {canReadPatients && (
-              <FormControl size="small" sx={{ minWidth: 180 }}>
+              <FormControl size="small" sx={filterControlSx}>
                 <InputLabel id="appointment-patient-filter">Patient</InputLabel>
                 <Select
                   label="Patient"
@@ -149,13 +152,13 @@ export function AppointmentListPage() {
                 </Select>
               </FormControl>
             )}
-          </Stack>
-          <Stack component="form" direction={{ xs: 'column', md: 'row' }} spacing={2} onSubmit={submitRange}>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitRange} sx={{ flex: '2 1 320px', minWidth: 0, alignItems: 'center' }}>
             <TextField
               label="Starts from"
               name="startsAtFrom"
               size="small"
               slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ flex: 1, minWidth: 0 }}
               type="datetime-local"
             />
             <TextField
@@ -163,12 +166,12 @@ export function AppointmentListPage() {
               name="startsAtTo"
               size="small"
               slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ flex: 1, minWidth: 0 }}
               type="datetime-local"
             />
             <Button type="submit" variant="outlined">Apply time range</Button>
           </Stack>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading appointments" />}
       {query.isError && (
@@ -179,8 +182,19 @@ export function AppointmentListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canBookAppointment ? (
+              <Button component={Link} to="/appointments/new" variant="contained">
+                Book appointment
+              </Button>
+            ) : undefined
+          }
+          description={
+            canBookAppointment
+              ? 'Adjust the filters or book a new appointment.'
+              : 'No appointments match the current filters.'
+          }
           title="No appointments found"
-          description="Adjust the filters or book an appointment."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -201,11 +215,11 @@ export function AppointmentListPage() {
               <TableBody>
                 {query.data.data.map((appointment) => (
                   <TableRow hover key={appointment.id}>
-                    <TableCell>{new Date(appointment.startsAt).toLocaleString()}</TableCell>
-                    <TableCell>{new Date(appointment.endsAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(appointment.startsAt)}</TableCell>
+                    <TableCell>{formatHospitalDateTime(appointment.endsAt)}</TableCell>
                     <TableCell>{patientLabel(appointment.patient)}</TableCell>
                     <TableCell>{doctorLabel(appointment.doctor)}</TableCell>
-                    <TableCell>{appointment.status}</TableCell>
+                    <TableCell><StatusChip value={appointment.status} /></TableCell>
                     <TableCell>{appointment.reason ?? '—'}</TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/appointments/${appointment.id}`}>

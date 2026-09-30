@@ -24,6 +24,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import {
   EmptyState,
   ErrorState,
@@ -51,6 +52,7 @@ export function PatientDocumentsPanel({ patientId }: { patientId: string }) {
   const [category, setCategory] = useState<DocumentCategory | ''>('')
   const [uploadOpen, setUploadOpen] = useState(false)
   const [editing, setEditing] = useState<PatientDocument | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const query = useDocuments(patientId, {
     page,
     pageSize: 20,
@@ -120,8 +122,7 @@ export function PatientDocumentsPanel({ patientId }: { patientId: string }) {
         <Stack spacing={0.5}>
           <Typography component="h2" variant="h6">Patient documents</Typography>
           <Typography color="text.secondary" variant="body2">
-            PDF, JPEG, and PNG up to 10 MB. Duplicate files are allowed. Soft-delete only.
-            Malware scanning is not implemented.
+            PDF, JPEG, and PNG up to 10 MB.
           </Typography>
         </Stack>
         <Can permission="patient_document.create">
@@ -184,10 +185,7 @@ export function PatientDocumentsPanel({ patientId }: { patientId: string }) {
                       </Can>
                       <Can permission="patient_document.delete">
                         <Button
-                          onClick={() => void remove.mutateAsync(document.id).then(
-                            () => notify('Document soft-deleted.', 'success'),
-                            (error: unknown) => notify(error instanceof ApiError ? error.message : 'Delete failed.', 'error'),
-                          )}
+                          onClick={() => setDeleteId(document.id)}
                           size="small"
                         >
                           Delete
@@ -213,8 +211,7 @@ export function PatientDocumentsPanel({ patientId }: { patientId: string }) {
           <DialogContent>
             <Stack spacing={2}>
               <Alert severity="info">
-                The stored file is immutable. Upload a new document to replace a file.
-                Browser file type is not trusted; the server inspects the file signature.
+                After upload, the file cannot be replaced. Upload a new document instead.
               </Alert>
               <TextField label="Title" name="title" required slotProps={{ htmlInput: { maxLength: 200 } }} />
               <FormControl fullWidth required>
@@ -276,6 +273,24 @@ export function PatientDocumentsPanel({ patientId }: { patientId: string }) {
           </DialogActions>
         </Stack>
       </Dialog>
+      <ConfirmDialog
+        confirmColor="warning"
+        confirmLabel="Delete document"
+        description="The document will be hidden from the patient record."
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          if (!deleteId) return
+          const id = deleteId
+          setDeleteId(null)
+          void remove.mutateAsync(id).then(
+            () => notify('Document deleted.', 'success'),
+            (error: unknown) => notify(error instanceof ApiError ? error.message : 'Delete failed.', 'error'),
+          )
+        }}
+        open={deleteId !== null}
+        pending={remove.isPending}
+        title="Delete patient document?"
+      />
     </Paper>
   )
 }

@@ -203,6 +203,7 @@ describe('medical record create and detail', () => {
     )
     expect(await screen.findByText('Fictional fever')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Finalize record' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finalize this record' }))
     await waitFor(() => expect(medicalRecordApi.finalizeMedicalRecord).toHaveBeenCalledWith(record.id))
     unmount()
 
@@ -262,7 +263,7 @@ describe('patient history permission boundary', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByRole('heading', { name: 'Medical history' })).toBeVisible()
-    expect(await screen.findByText(/draft/)).toBeVisible()
+    expect(await screen.findByText('Draft')).toBeVisible()
   })
 })
 

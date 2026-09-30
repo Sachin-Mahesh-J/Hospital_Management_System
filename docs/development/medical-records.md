@@ -84,7 +84,7 @@ transitions are implemented by D-024.
 | `prescription.read` | yes | yes | yes | no | no | yes | no |
 | `prescription.create` | no | yes | no | no | no | no | no |
 | `prescription.cancel` | no | yes | no | no | no | no | no |
-| `medicine.read` | no | yes | no | no | no | yes | no |
+| `medicine.read` | yes | yes | no | no | no | yes | no |
 
 Diagnosis, treatment, and report writes use the parent medical-record
 permissions. `patient.read` is not sufficient for medical history.

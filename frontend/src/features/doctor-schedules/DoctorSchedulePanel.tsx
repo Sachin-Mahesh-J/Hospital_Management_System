@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -19,6 +20,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -97,10 +99,6 @@ export function DoctorSchedulePanel({ doctorId }: { doctorId: string }) {
   return (
     <Stack spacing={2}>
       <Typography component="h2" variant="h6">Schedules</Typography>
-      <Typography color="text.secondary" variant="body2">
-        Each row is an explicit start/end interval. Recurrence, breaks, holidays, and
-        overlap policy are not implemented in this milestone.
-      </Typography>
 
       <Paper sx={{ p: 2 }}>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -149,9 +147,9 @@ export function DoctorSchedulePanel({ doctorId }: { doctorId: string }) {
             <TableBody>
               {query.data.data.map((schedule) => (
                 <TableRow hover key={schedule.id}>
-                  <TableCell>{new Date(schedule.startsAt).toLocaleString()}</TableCell>
-                  <TableCell>{new Date(schedule.endsAt).toLocaleString()}</TableCell>
-                  <TableCell>{schedule.status}</TableCell>
+                  <TableCell>{formatHospitalDateTime(schedule.startsAt)}</TableCell>
+                  <TableCell>{formatHospitalDateTime(schedule.endsAt)}</TableCell>
+                  <TableCell><StatusChip value={schedule.status} /></TableCell>
                   <TableCell>{schedule.note ?? '—'}</TableCell>
                   <Can permission="doctor_schedule.update">
                     <TableCell align="right">

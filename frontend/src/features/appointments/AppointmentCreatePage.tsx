@@ -15,7 +15,7 @@ export function AppointmentCreatePage() {
   return (
     <Page
       title="Book appointment"
-      description="Collect explicit start and end times. There is no default duration. The server validates schedule fit, conflicts, and approved leave."
+      description="Enter start and end times. There is no default duration."
       actions={<Button component={Link} to="/appointments">Cancel</Button>}
     >
       <AppointmentForm

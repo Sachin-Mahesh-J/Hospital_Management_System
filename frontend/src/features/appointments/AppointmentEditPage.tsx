@@ -1,9 +1,9 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import { Alert, Button, Paper, Stack, TextField } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { useAppointment, useUpdateAppointment } from './hooks'
 
@@ -15,10 +15,13 @@ export function AppointmentEditPage() {
   const { notify } = useNotification()
   const [error, setError] = useState<string | null>(null)
 
-  if (appointmentQuery.isLoading) return <LoadingState label="Loading appointment" />
+  if (appointmentQuery.isLoading) {
+    return <PageLoading title="Edit appointment reason" label="Loading appointment information..." />
+  }
   if (appointmentQuery.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Edit appointment reason"
         message={appointmentQuery.error instanceof ApiError ? appointmentQuery.error.message : 'Appointment could not be loaded.'}
         onRetry={() => void appointmentQuery.refetch()}
       />
@@ -67,7 +70,7 @@ export function AppointmentEditPage() {
           <TextField
             disabled
             label="Interval"
-            value={`${new Date(appointment.startsAt).toLocaleString()} – ${new Date(appointment.endsAt).toLocaleString()}`}
+            value={`${formatHospitalDateTime(appointment.startsAt)} – ${formatHospitalDateTime(appointment.endsAt)}`}
           />
           <TextField
             defaultValue={appointment.reason ?? ''}

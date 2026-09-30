@@ -12,6 +12,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { Page } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { useAdjustStock, useInventory } from './hooks'
@@ -52,41 +53,49 @@ export function StockAdjustPage() {
 
   return (
     <Page
+      help="Adjustments append a signed movement to the batch ledger. A reason is required and available quantity cannot go below zero."
+      helpLabel="Stock adjustments"
       title="Adjust stock"
-      description="Appends a signed adjustment movement. A reason is required. Available stock cannot become negative."
+      description="Record a signed inventory adjustment for a selected batch."
       actions={<Button component={Link} to="/pharmacy/inventory">Cancel</Button>}
     >
       <Paper sx={{ p: 3 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
+        <Stack component="form" spacing={3} onSubmit={(event) => void handleSubmit(event)}>
           {error && <Alert severity="error">{error}</Alert>}
-          <FormControl fullWidth required>
-            <InputLabel id="adjust-batch">Batch</InputLabel>
-            <Select
-              label="Batch"
-              labelId="adjust-batch"
-              onChange={(event) => setBatchId(event.target.value)}
-              value={batchId}
-            >
-              {(inventory.data?.data ?? []).map((batch) => (
-                <MenuItem key={batch.id} value={batch.id}>
-                  {batchLabel(batch)} (available {batch.availableQuantity})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            helperText="Use a positive quantity to increase stock or a negative quantity to decrease it."
-            label="Quantity"
-            name="quantity"
-            required
-            slotProps={{ htmlInput: { 'aria-label': 'Adjustment quantity' } }}
-          />
-          <TextField
-            label="Reason"
-            name="reason"
-            required
-            slotProps={{ htmlInput: { maxLength: 500, 'aria-label': 'Adjustment reason' } }}
-          />
+          <FormSection title="Batch">
+            <FormControl fullWidth required>
+              <InputLabel id="adjust-batch">Batch</InputLabel>
+              <Select
+                label="Batch"
+                labelId="adjust-batch"
+                onChange={(event) => setBatchId(event.target.value)}
+                value={batchId}
+              >
+                {(inventory.data?.data ?? []).map((batch) => (
+                  <MenuItem key={batch.id} value={batch.id}>
+                    {batchLabel(batch)} (available {batch.availableQuantity})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </FormSection>
+          <FormSection title="Adjustment">
+            <Stack spacing={2}>
+              <TextField
+                helperText="Use a positive quantity to increase stock or a negative quantity to decrease it."
+                label="Quantity"
+                name="quantity"
+                required
+                slotProps={{ htmlInput: { 'aria-label': 'Adjustment quantity' } }}
+              />
+              <TextField
+                label="Reason"
+                name="reason"
+                required
+                slotProps={{ htmlInput: { maxLength: 500, 'aria-label': 'Adjustment reason' } }}
+              />
+            </Stack>
+          </FormSection>
           <Button disabled={mutation.isPending} type="submit" variant="contained">
             Confirm adjustment
           </Button>

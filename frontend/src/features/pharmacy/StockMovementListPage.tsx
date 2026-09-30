@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   FormControl,
   InputLabel,
@@ -14,6 +15,8 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import { ApiError } from '../../api/client'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
 import {
   EmptyState,
@@ -39,25 +42,27 @@ export function StockMovementListPage() {
   return (
     <Page
       title="Stock movements"
-      description="Append-only pharmacy ledger. Movements cannot be edited or deleted."
+      description="Pharmacy stock movements cannot be edited or deleted."
     >
-      <FormControl sx={{ maxWidth: 280 }}>
-        <InputLabel id="movement-type-filter">Movement type</InputLabel>
-        <Select
-          label="Movement type"
-          labelId="movement-type-filter"
-          onChange={(event) => {
-            setMovementType(event.target.value as StockMovementType | '')
-            setPage(1)
-          }}
-          value={movementType}
-        >
-          <MenuItem value="">All types</MenuItem>
-          {stockMovementTypes.map((value) => (
-            <MenuItem key={value} value={value}>{value}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FilterBar>
+        <FormControl size="small" sx={filterControlSx}>
+          <InputLabel id="movement-type-filter">Movement type</InputLabel>
+          <Select
+            label="Movement type"
+            labelId="movement-type-filter"
+            onChange={(event) => {
+              setMovementType(event.target.value as StockMovementType | '')
+              setPage(1)
+            }}
+            value={movementType}
+          >
+            <MenuItem value="">All types</MenuItem>
+            {stockMovementTypes.map((value) => (
+              <MenuItem key={value} value={value}>{value}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading stock movements" />}
       {query.isError && (
         <ErrorState
@@ -67,8 +72,8 @@ export function StockMovementListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          description="Receipts, adjustments, dispenses, and reversals appear here after they are recorded. Adjust the filters if you expected activity."
           title="No stock movements found"
-          description="Receipts, adjustments, dispenses, and reversals appear here after they are recorded."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -87,7 +92,7 @@ export function StockMovementListPage() {
               <TableBody>
                 {query.data.data.map((movement) => (
                   <TableRow hover key={movement.id}>
-                    <TableCell>{new Date(movement.occurredAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(movement.occurredAt)}</TableCell>
                     <TableCell>{movement.movementType}</TableCell>
                     <TableCell>
                       {medicineLabel(movement.medicineBatch.medicine)} / {movement.medicineBatch.batchNumber}

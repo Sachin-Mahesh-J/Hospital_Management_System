@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -11,12 +12,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { formatStatusLabel } from '../../shared/components/formatStatusLabel'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import {
   useCancelPrescription,
@@ -26,11 +28,15 @@ import {
 } from './hooks'
 import { canCancelPrescription, medicineLabel } from './types'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -48,10 +54,13 @@ export function PrescriptionDetailPage() {
   const [reverseOpen, setReverseOpen] = useState<string | null>(null)
   const [reverseError, setReverseError] = useState<string | null>(null)
 
-  if (query.isLoading) return <LoadingState label="Loading prescription" />
+  if (query.isLoading) {
+    return <PageLoading title="Prescription" label="Loading prescription information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Prescription"
         message={query.error instanceof ApiError ? query.error.message : 'Prescription could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -135,7 +144,9 @@ export function PrescriptionDetailPage() {
 
   return (
     <Page
-      title={`Prescription (${prescription.status})`}
+      help="Dispensing records stock movements per item. Dispense reversal restores stock and does not void invoices or payments. Prescription cancellation is separate from reversal."
+      helpLabel="Dispensing and reversal"
+      title={`Prescription (${formatStatusLabel(prescription.status)})`}
       description={`${prescription.patient.firstName} ${prescription.patient.lastName}`}
       actions={
         <Stack direction="row" spacing={1}>
@@ -149,8 +160,8 @@ export function PrescriptionDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={prescription.status} />
-            <Detail label="Prescribed" value={new Date(prescription.prescribedAt).toLocaleString()} />
+            <Detail label="Status" value={<StatusChip value={prescription.status} />} />
+            <Detail label="Prescribed" value={formatHospitalDateTime(prescription.prescribedAt)} />
           </Stack>
           <Divider />
           <Detail
@@ -179,7 +190,7 @@ export function PrescriptionDetailPage() {
           {item.dispenseRecords.map((record) => (
             <Stack key={record.id} spacing={0.5} sx={{ mt: 2 }}>
               <Typography variant="body2">
-                Dispensed {record.quantityDispensed} {record.unit} on {new Date(record.dispensedAt).toLocaleString()}
+                Dispensed {record.quantityDispensed} {record.unit} on {formatHospitalDateTime(record.dispensedAt)}
                 {record.reversed ? ' (reversed)' : ''}
               </Typography>
               <Can permission="prescription.reverse">

@@ -19,12 +19,18 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../shared/components/StateViews'
+import { formatCalendarDate } from '../../shared/datetime/hospitalTime'
 import { useInventory } from './hooks'
 import {
   batchStatuses,
@@ -36,6 +42,8 @@ export function InventoryListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<BatchStatus | ''>('')
+  const { user } = useAuth()
+  const canReceiveStock = hasPermission(user, 'stock.receive')
   const query = useInventory({
     page,
     pageSize: 20,
@@ -46,7 +54,7 @@ export function InventoryListPage() {
   return (
     <Page
       title="Inventory"
-      description="Pharmacy batches and derived available quantity. Movements are append-only. Catalog administration is not available here."
+      description="Pharmacy batches and available quantity."
       actions={
         <Stack direction="row" spacing={1}>
           <Can permission="stock.receive">
@@ -62,18 +70,19 @@ export function InventoryListPage() {
         </Stack>
       }
     >
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+      <FilterBar>
         <TextField
           label="Search"
           onChange={(event) => {
             setSearch(event.target.value)
             setPage(1)
           }}
-          sx={{ maxWidth: 320 }}
+          size="small"
+          sx={{ ...filterControlSx, flex: '1 1 220px', maxWidth: { sm: 400 } }}
           value={search}
           slotProps={{ htmlInput: { 'aria-label': 'Search inventory' } }}
         />
-        <FormControl sx={{ maxWidth: 240 }}>
+        <FormControl size="small" sx={filterControlSx}>
           <InputLabel id="inventory-status-filter">Batch status</InputLabel>
           <Select
             label="Batch status"
@@ -90,7 +99,7 @@ export function InventoryListPage() {
             ))}
           </Select>
         </FormControl>
-      </Stack>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading inventory" />}
       {query.isError && (
         <ErrorState
@@ -100,8 +109,19 @@ export function InventoryListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canReceiveStock ? (
+              <Button component={Link} to="/pharmacy/inventory/receive" variant="contained">
+                Receive stock
+              </Button>
+            ) : undefined
+          }
+          description={
+            canReceiveStock
+              ? 'Receive stock to create a batch. Available quantity is calculated from stock movements.'
+              : 'No inventory batches match the current filters.'
+          }
           title="No inventory batches found"
-          description="Receive stock to create a batch. Available quantity is calculated from stock movements."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -124,11 +144,11 @@ export function InventoryListPage() {
                   <TableRow hover key={batch.id}>
                     <TableCell>{medicineLabel(batch.medicine)}</TableCell>
                     <TableCell>{batch.batchNumber}</TableCell>
-                    <TableCell>{batch.expiryDate}</TableCell>
+                    <TableCell>{formatCalendarDate(batch.expiryDate)}</TableCell>
                     <TableCell>{batch.receivedQuantity} {batch.medicine.inventoryUnit}</TableCell>
                     <TableCell>{batch.availableQuantity} {batch.medicine.inventoryUnit}</TableCell>
-                    <TableCell>{batch.status}</TableCell>
-                    <TableCell>{batch.medicine.status}</TableCell>
+                    <TableCell><StatusChip value={batch.status} /></TableCell>
+                    <TableCell><StatusChip value={batch.medicine.status} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>

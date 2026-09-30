@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   FormControl,
@@ -17,7 +18,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -33,6 +39,8 @@ import {
 export function LaboratoryListPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<LabRequestStatus | ''>('')
+  const { user } = useAuth()
+  const canCreateLabRequest = hasPermission(user, 'lab_request.create')
   const query = useLabRequests({
     page,
     pageSize: 20,
@@ -42,7 +50,7 @@ export function LaboratoryListPage() {
   return (
     <Page
       title="Laboratory"
-      description="View laboratory requests, collection, results, and printable reports. Billing and catalog administration are not part of this module."
+      description="View laboratory requests, collection, results, and printable reports."
       actions={
         <Can permission="lab_request.create">
           <Button component={Link} to="/laboratory/new" variant="contained">
@@ -51,23 +59,25 @@ export function LaboratoryListPage() {
         </Can>
       }
     >
-      <FormControl sx={{ maxWidth: 280 }}>
-        <InputLabel id="lab-status-filter">Status</InputLabel>
-        <Select
-          label="Status"
-          labelId="lab-status-filter"
-          onChange={(event) => {
-            setStatus(event.target.value as LabRequestStatus | '')
-            setPage(1)
-          }}
-          value={status}
-        >
-          <MenuItem value="">All statuses</MenuItem>
-          {labRequestStatuses.map((value) => (
-            <MenuItem key={value} value={value}>{value}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FilterBar>
+        <FormControl size="small" sx={filterControlSx}>
+          <InputLabel id="lab-status-filter">Status</InputLabel>
+          <Select
+            label="Status"
+            labelId="lab-status-filter"
+            onChange={(event) => {
+              setStatus(event.target.value as LabRequestStatus | '')
+              setPage(1)
+            }}
+            value={status}
+          >
+            <MenuItem value="">All statuses</MenuItem>
+            {labRequestStatuses.map((value) => (
+              <MenuItem key={value} value={value}>{value}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading laboratory requests" />}
       {query.isError && (
         <ErrorState
@@ -77,8 +87,19 @@ export function LaboratoryListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canCreateLabRequest ? (
+              <Button component={Link} to="/laboratory/new" variant="contained">
+                New request
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateLabRequest
+              ? 'Create a laboratory request or change the status filter. Collection and result entry are performed on the request detail page.'
+              : 'No laboratory requests match the current filter.'
+          }
           title="No laboratory requests found"
-          description="Doctors create laboratory requests. Sample collection and result entry are performed by laboratory staff."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -97,9 +118,9 @@ export function LaboratoryListPage() {
               <TableBody>
                 {query.data.data.map((request) => (
                   <TableRow hover key={request.id}>
-                    <TableCell>{new Date(request.requestedAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(request.requestedAt)}</TableCell>
                     <TableCell>{labPatientLabel(request.patient)}</TableCell>
-                    <TableCell>{request.status}</TableCell>
+                    <TableCell><StatusChip value={request.status} /></TableCell>
                     <TableCell>{request.itemCount}</TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/laboratory/${request.id}`}>

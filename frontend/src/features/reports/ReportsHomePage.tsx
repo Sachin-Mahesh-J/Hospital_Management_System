@@ -14,13 +14,13 @@ export function ReportsHomePage() {
   return (
     <Page
       title="Reports"
-      description="Read-only reports over existing operational data. Browser print is available on each report. CSV and generated PDF files are not provided."
+      description="Reports based on existing hospital records. Print is available on each report."
     >
-      <Stack spacing={2}>
+      <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
         {reportLinks.map((report) => (
           <Can key={report.path} permission={report.permission}>
-            <Card>
-              <CardActionArea component={Link} to={report.path}>
+            <Card sx={{ flex: '1 1 260px', maxWidth: 420, minWidth: 0 }}>
+              <CardActionArea component={Link} to={report.path} sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="h6">{report.label}</Typography>
                   <Typography color="text.secondary">

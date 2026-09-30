@@ -12,6 +12,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { Page } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { useCreatePrescription, useMedicines } from './hooks'
@@ -19,7 +20,7 @@ import { medicineLabel } from './types'
 
 export function PrescriptionCreatePage() {
   const { medicalRecordId = '' } = useParams()
-  const medicines = useMedicines({ page: 1, pageSize: 100 })
+  const medicines = useMedicines({ page: 1, pageSize: 100, status: 'active' })
   const mutation = useCreatePrescription()
   const navigate = useNavigate()
   const { notify } = useNotification()
@@ -68,33 +69,47 @@ export function PrescriptionCreatePage() {
       actions={<Button component={Link} to={`/medical-records/${medicalRecordId}`}>Cancel</Button>}
     >
       <Paper sx={{ p: 3 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
+        <Stack component="form" spacing={3} onSubmit={(event) => void handleSubmit(event)}>
           {error && <Alert severity="error">{error}</Alert>}
-          <FormControl>
-            <InputLabel id="medicine-select">Medicine</InputLabel>
-            <Select
-              label="Medicine"
-              labelId="medicine-select"
-              onChange={(event) => setMedicineId(event.target.value)}
-              value={medicineId}
-            >
-              {(medicines.data?.data ?? []).map((medicine) => (
-                <MenuItem key={medicine.id} value={medicine.id}>
-                  {medicineLabel(medicine)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {selected && (
-            <TextField disabled label="Unit" value={selected.inventoryUnit} />
-          )}
-          <TextField label="Dosage" name="dosage" required />
-          <TextField label="Route" name="route" />
-          <TextField label="Frequency" name="frequency" required />
-          <TextField label="Duration" name="duration" required />
-          <TextField label="Quantity prescribed" name="quantityPrescribed" required />
-          <TextField label="Instructions" multiline name="instructions" />
-          <TextField label="Notes" multiline name="notes" />
+          <FormSection title="Medicine">
+            <Stack spacing={2}>
+              <FormControl fullWidth>
+                <InputLabel id="medicine-select">Medicine</InputLabel>
+                <Select
+                  label="Medicine"
+                  labelId="medicine-select"
+                  onChange={(event) => setMedicineId(event.target.value)}
+                  value={medicineId}
+                >
+                  {(medicines.data?.data ?? []).map((medicine) => (
+                    <MenuItem key={medicine.id} value={medicine.id}>
+                      {medicineLabel(medicine)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {selected && (
+                <TextField disabled label="Unit" value={selected.inventoryUnit} />
+              )}
+            </Stack>
+          </FormSection>
+          <FormSection title="Dosing">
+            <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField fullWidth label="Dosage" name="dosage" required />
+                <TextField fullWidth label="Route" name="route" />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField fullWidth label="Frequency" name="frequency" required />
+                <TextField fullWidth label="Duration" name="duration" required />
+              </Stack>
+              <TextField label="Quantity prescribed" name="quantityPrescribed" required />
+              <TextField label="Instructions" multiline name="instructions" />
+            </Stack>
+          </FormSection>
+          <FormSection title="Prescription notes">
+            <TextField label="Notes" multiline name="notes" fullWidth />
+          </FormSection>
           <Button disabled={mutation.isPending} type="submit" variant="contained">
             {mutation.isPending ? 'Creating…' : 'Create prescription'}
           </Button>

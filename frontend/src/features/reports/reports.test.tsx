@@ -125,8 +125,8 @@ describe('dashboard metric visibility', () => {
     }
     vi.mocked(reportApi.fetchDashboard).mockResolvedValue(dashboard)
     renderWithAuth(<HomePage />, ['report.revenue.read'])
-    expect(await screen.findByText('Revenue summary')).toBeVisible()
-    expect(screen.getByText('150.0000 LKR (2)')).toBeVisible()
+    expect(await screen.findByText('Revenue')).toBeVisible()
+    expect(screen.getByText('LKR 150.0000')).toBeVisible()
     expect(screen.queryByText('Total patients')).not.toBeInTheDocument()
     expect(screen.queryByText("Today's appointments")).not.toBeInTheDocument()
     expect(screen.queryByText('Laboratory requests')).not.toBeInTheDocument()
@@ -135,10 +135,10 @@ describe('dashboard metric visibility', () => {
 
   it('does not fetch or render M14 metrics without report permissions', async () => {
     renderWithAuth(<HomePage />, ['patient.read'])
-    expect(await screen.findByText(/API connected/)).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeVisible()
     expect(reportApi.fetchDashboard).not.toHaveBeenCalled()
     expect(screen.queryByText('Total patients')).not.toBeInTheDocument()
-    expect(screen.queryByText('Revenue summary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Revenue')).not.toBeInTheDocument()
   })
 })
 

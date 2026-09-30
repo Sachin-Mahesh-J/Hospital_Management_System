@@ -1,88 +1,110 @@
+import {
+  addCalendarDays,
+  addCalendarMonths,
+  formatCalendarDate,
+  hospitalDateUtcRange,
+  hospitalLocalMidnightUtc,
+  startOfHospitalMonth,
+  startOfHospitalWeek,
+  type HospitalLocalParts,
+  hospitalLocalParts,
+} from '../../shared/datetime/hospitalTime'
+
 export type CalendarView = 'day' | 'week' | 'month'
 
 export const CALENDAR_START_HOUR = 7
 export const CALENDAR_END_HOUR = 19
 export const HOUR_HEIGHT_PX = 48
 
-export function startOfLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate())
+export type CalendarRange = {
+  from: Date
+  to: Date
+  days: string[]
+  fromDate: string
+  toDate: string
 }
 
-export function addDays(value: Date, days: number): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate() + days)
-}
-
-export function startOfWeek(value: Date): Date {
-  const start = startOfLocalDay(value)
-  const weekday = start.getDay()
-  const mondayOffset = weekday === 0 ? -6 : 1 - weekday
-  return addDays(start, mondayOffset)
-}
-
-export function startOfMonth(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), 1)
+export function calendarDays(anchorDate: string, view: CalendarView): string[] {
+  if (view === 'day') return [anchorDate]
+  if (view === 'week') {
+    const start = startOfHospitalWeek(anchorDate)
+    return Array.from({ length: 7 }, (_, index) => addCalendarDays(start, index))
+  }
+  const gridStart = startOfHospitalWeek(startOfHospitalMonth(anchorDate))
+  return Array.from({ length: 42 }, (_, index) => addCalendarDays(gridStart, index))
 }
 
 export function calendarRange(
-  anchor: Date,
+  anchorDate: string,
   view: CalendarView,
-): { from: Date; to: Date } {
-  if (view === 'day') {
-    const from = startOfLocalDay(anchor)
-    return { from, to: addDays(from, 1) }
+): CalendarRange {
+  const days = calendarDays(anchorDate, view)
+  const fromDate = days[0]
+  const toDate = addCalendarDays(days[days.length - 1], 1)
+  return {
+    fromDate,
+    toDate,
+    days,
+    from: hospitalLocalMidnightUtc(fromDate),
+    to: hospitalLocalMidnightUtc(toDate),
   }
-  if (view === 'week') {
-    const from = startOfWeek(anchor)
-    return { from, to: addDays(from, 7) }
-  }
-  const monthStart = startOfMonth(anchor)
-  const gridStart = startOfWeek(monthStart)
-  return { from: gridStart, to: addDays(gridStart, 42) }
 }
 
-export function toOffsetIso(value: Date): string {
-  const offsetMin = -value.getTimezoneOffset()
-  const sign = offsetMin >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMin)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+export function shiftCalendarAnchor(
+  anchorDate: string,
+  view: CalendarView,
+  direction: number,
+): string {
+  if (view === 'day') return addCalendarDays(anchorDate, direction)
+  if (view === 'week') return addCalendarDays(anchorDate, direction * 7)
+  return addCalendarMonths(anchorDate, direction)
 }
 
-export function toLocalDateTimeValue(value: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`
-}
-
-export function appointmentOverlapsLocalDay(
+export function appointmentOverlapsHospitalDay(
   startsAt: string,
   endsAt: string,
-  day: Date,
+  calendarDate: string,
 ): boolean {
-  const start = new Date(startsAt).getTime()
-  const end = new Date(endsAt).getTime()
-  const dayStart = startOfLocalDay(day).getTime()
-  const dayEnd = addDays(day, 1).getTime()
-  return start < dayEnd && end > dayStart
+  const { start, end } = hospitalDateUtcRange(calendarDate)
+  return Date.parse(startsAt) < end.getTime() && Date.parse(endsAt) > start.getTime()
 }
 
-export function minutesFromDayStart(iso: string, day: Date): number {
-  const instant = new Date(iso).getTime()
-  const start = startOfLocalDay(day).getTime()
-  return Math.round((instant - start) / 60_000)
+export function minutesFromHospitalDayStart(
+  iso: string,
+  calendarDate: string,
+): number {
+  const start = hospitalLocalMidnightUtc(calendarDate).getTime()
+  return Math.round((Date.parse(iso) - start) / 60_000)
 }
 
 export function durationMinutes(startsAt: string, endsAt: string): number {
   return Math.max(1, Math.round((Date.parse(endsAt) - Date.parse(startsAt)) / 60_000))
 }
 
-export function slotStart(day: Date, hour: number): Date {
-  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, 0, 0)
+export function hospitalSlotDateTimeValue(
+  calendarDate: string,
+  hour: number,
+): string {
+  return `${calendarDate}T${String(hour).padStart(2, '0')}:00`
 }
 
-export function formatDayHeading(value: Date): string {
-  return value.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
+export function formatDayHeading(calendarDate: string): string {
+  const instant = hospitalLocalMidnightUtc(calendarDate)
+  const parts: HospitalLocalParts = hospitalLocalParts(instant)
+  return `${parts.weekday}, ${formatCalendarDate(calendarDate)}`
+}
+
+export function formatCalendarHeading(
+  anchorDate: string,
+  view: CalendarView,
+): string {
+  if (view === 'month') {
+    const [year, month] = anchorDate.split('-').map(Number)
+    return new Intl.DateTimeFormat('en-GB', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(year, month - 1, 1)))
+  }
+  return formatCalendarDate(anchorDate)
 }

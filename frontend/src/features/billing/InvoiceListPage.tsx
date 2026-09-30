@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   FormControl,
@@ -19,7 +20,12 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -37,6 +43,8 @@ export function InvoiceListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<InvoiceStatus | ''>('')
+  const { user } = useAuth()
+  const canCreateInvoice = hasPermission(user, 'invoice.create')
   const query = useInvoices({
     page,
     pageSize: 20,
@@ -54,7 +62,7 @@ export function InvoiceListPage() {
   return (
     <Page
       title="Billing"
-      description="Invoices, payments, and receipts. Totals are calculated by the server. Admission billing, tax, and discounts are not enabled."
+      description="Invoices, payments, and receipts."
       actions={
         <Can permission="invoice.create">
           <Button component={Link} to="/billing/new" variant="contained">
@@ -63,9 +71,8 @@ export function InvoiceListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: 1 }}>
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: '2 1 280px', minWidth: 0 }}>
             <TextField
               defaultValue={search}
               fullWidth
@@ -76,7 +83,7 @@ export function InvoiceListPage() {
             />
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="invoice-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -93,8 +100,7 @@ export function InvoiceListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading invoices" />}
       {query.isError && (
         <ErrorState
@@ -104,8 +110,19 @@ export function InvoiceListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canCreateInvoice ? (
+              <Button component={Link} to="/billing/new" variant="contained">
+                Create invoice
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateInvoice
+              ? 'Create a draft invoice from completed consultations, laboratory items, or pharmacy dispenses.'
+              : 'No invoices match the current search or status filter.'
+          }
           title="No invoices found"
-          description="Create a draft invoice from completed consultations, laboratory items, or pharmacy dispenses."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -131,10 +148,10 @@ export function InvoiceListPage() {
                       </Button>
                     </TableCell>
                     <TableCell>{patientLabel(invoice.patient)}</TableCell>
-                    <TableCell>{invoice.status}</TableCell>
+                    <TableCell><StatusChip value={invoice.status} /></TableCell>
                     <TableCell>{moneyLabel(invoice.totalAmount, invoice.currency)}</TableCell>
                     <TableCell>{moneyLabel(invoice.balanceAmount, invoice.currency)}</TableCell>
-                    <TableCell>{new Date(invoice.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(invoice.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

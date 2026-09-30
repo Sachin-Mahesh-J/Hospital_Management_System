@@ -1,16 +1,22 @@
 import { Button, Divider, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
+import { formatCalendarDate } from '../../shared/datetime/hospitalTime'
 import { useEmployee } from './hooks'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -19,10 +25,13 @@ export function EmployeeDetailPage() {
   const { employeeId = '' } = useParams()
   const query = useEmployee(employeeId)
 
-  if (query.isLoading) return <LoadingState label="Loading employee" />
+  if (query.isLoading) {
+    return <PageLoading title="Employee" label="Loading employee information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Employee"
         message={query.error instanceof ApiError ? query.error.message : 'Employee could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -49,7 +58,7 @@ export function EmployeeDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={employee.employmentStatus} />
+            <Detail label="Status" value={<StatusChip value={employee.employmentStatus} />} />
             <Detail label="Job title" value={employee.jobTitle} />
             <Detail label="Department" value={`${employee.department.name} (${employee.department.status})`} />
           </Stack>
@@ -61,7 +70,7 @@ export function EmployeeDetailPage() {
           </Stack>
           <Divider />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Hire date" value={employee.hireDate} />
+            <Detail label="Hire date" value={formatCalendarDate(employee.hireDate)} />
             <Detail label="End date" value={employee.endDate} />
           </Stack>
         </Stack>

@@ -1,4 +1,10 @@
 import {
+  addCalendarDays,
+  formatHospitalDateTime,
+  hospitalDateTimeToOffsetIso,
+  hospitalToday,
+} from '../../shared/datetime/hospitalTime'
+import {
   Button,
   FormControl,
   InputLabel,
@@ -17,27 +23,24 @@ import {
 } from '@mui/material'
 import { useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../shared/components/StateViews'
-import { localDateTimeToOffsetIso } from '../doctor-schedules/types'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { useAudit, useExportAudit } from './hooks'
 import { auditOutcomes, type AuditOutcome } from './types'
 
 function defaultRange(): { from: string; to: string } {
-  const to = new Date()
-  const from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const today = hospitalToday()
+  const from = addCalendarDays(today, -7)
   return {
-    from: localDateTimeToOffsetIso(
-      `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}T00:00`,
-    ),
-    to: localDateTimeToOffsetIso(
-      `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}T23:59`,
-    ),
+    from: hospitalDateTimeToOffsetIso(`${from}T00:00`),
+    to: hospitalDateTimeToOffsetIso(`${today}T23:59`),
   }
 }
 
@@ -84,8 +87,8 @@ export function AuditListPage() {
       notify('A bounded date/time range is required.', 'error')
       return
     }
-    setOccurredFrom(localDateTimeToOffsetIso(fromLocal))
-    setOccurredTo(localDateTimeToOffsetIso(toLocal))
+    setOccurredFrom(hospitalDateTimeToOffsetIso(fromLocal))
+    setOccurredTo(hospitalDateTimeToOffsetIso(toLocal))
     setActorUserId(String(form.get('actorUserId') ?? '').trim())
     setAction(String(form.get('action') ?? '').trim())
     setResourceType(String(form.get('resourceType') ?? '').trim())
@@ -116,8 +119,10 @@ export function AuditListPage() {
 
   return (
     <Page
+      help="CSV and PDF exports use the current filters, including the required date range. Files are generated on demand and are not stored."
+      helpLabel="Audit export"
       title="Audit records"
-      description="Read-only sanitized audit viewer. Exports use the same filters, are generated on demand, and are not stored."
+      description="Read-only audit log."
       actions={
         <Stack direction="row" spacing={1}>
           <Button disabled={exporter.isPending} onClick={() => void runExport('csv')} variant="outlined">
@@ -129,15 +134,16 @@ export function AuditListPage() {
         </Stack>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack component="form" spacing={2} onSubmit={submitFilters}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+      <FilterBar>
+        <Stack component="form" spacing={2} onSubmit={submitFilters} sx={{ flex: '1 1 100%', minWidth: 0, width: '100%' }}>
+          <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', width: '100%' }}>
             <TextField
               label="From"
               name="occurredFrom"
               required
               size="small"
               slotProps={{ inputLabel: { shrink: true } }}
+              sx={filterControlSx}
               type="datetime-local"
             />
             <TextField
@@ -146,9 +152,10 @@ export function AuditListPage() {
               required
               size="small"
               slotProps={{ inputLabel: { shrink: true } }}
+              sx={filterControlSx}
               type="datetime-local"
             />
-            <FormControl size="small" sx={{ minWidth: 160 }}>
+            <FormControl size="small" sx={filterControlSx}>
               <InputLabel id="audit-outcome">Outcome</InputLabel>
               <Select defaultValue="" label="Outcome" labelId="audit-outcome" name="outcome">
                 <MenuItem value="">All outcomes</MenuItem>
@@ -158,15 +165,15 @@ export function AuditListPage() {
               </Select>
             </FormControl>
           </Stack>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField label="Actor user ID" name="actorUserId" size="small" />
-            <TextField label="Action" name="action" size="small" />
-            <TextField label="Resource type" name="resourceType" size="small" />
-            <TextField label="Request ID" name="requestId" size="small" />
+          <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', width: '100%' }}>
+            <TextField label="Actor user ID" name="actorUserId" size="small" sx={filterControlSx} />
+            <TextField label="Action" name="action" size="small" sx={filterControlSx} />
+            <TextField label="Resource type" name="resourceType" size="small" sx={filterControlSx} />
+            <TextField label="Request ID" name="requestId" size="small" sx={filterControlSx} />
             <Button type="submit" variant="contained">Apply filters</Button>
           </Stack>
         </Stack>
-      </Paper>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading audit records" />}
       {query.isError && (
         <ErrorState
@@ -175,7 +182,10 @@ export function AuditListPage() {
         />
       )}
       {query.data && query.data.data.length === 0 && (
-        <EmptyState title="No audit records" description="Adjust the required date range or other filters." />
+        <EmptyState
+          description="No audit events match the required date range and filters. Widen the range or clear optional filters."
+          title="No audit records"
+        />
       )}
       {query.data && query.data.data.length > 0 && (
         <>
@@ -195,7 +205,7 @@ export function AuditListPage() {
               <TableBody>
                 {query.data.data.map((row) => (
                   <TableRow hover key={row.id}>
-                    <TableCell>{new Date(row.occurredAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(row.occurredAt)}</TableCell>
                     <TableCell>{row.actorUsername ?? row.actorUserId ?? '—'}</TableCell>
                     <TableCell>{row.action}</TableCell>
                     <TableCell>

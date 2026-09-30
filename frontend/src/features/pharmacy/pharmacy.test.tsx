@@ -105,7 +105,7 @@ describe('pharmacy navigation', () => {
         </MemoryRouter>,
       )
       expect(screen.getByRole('link', { name: 'Inventory' })).toBeVisible()
-      expect(screen.getByRole('link', { name: 'Movements' })).toBeVisible()
+      expect(screen.getByRole('link', { name: 'Stock movements' })).toBeVisible()
       unmount()
     }
   })
@@ -120,7 +120,7 @@ describe('pharmacy navigation', () => {
         </MemoryRouter>,
       )
       expect(screen.queryByRole('link', { name: 'Inventory' })).toBeNull()
-      expect(screen.queryByRole('link', { name: 'Movements' })).toBeNull()
+      expect(screen.queryByRole('link', { name: 'Stock movements' })).toBeNull()
       unmount()
     }
   })
@@ -179,6 +179,11 @@ describe('inventory screens', () => {
           </AuthContext>
         </NotificationProvider>
       </QueryClientProvider>,
+    )
+    await waitFor(() =>
+      expect(medicineApi.fetchMedicines).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active' }),
+      ),
     )
     fireEvent.mouseDown(await screen.findByLabelText(/^Medicine/))
     fireEvent.click(await screen.findByRole('option', { name: /Fictionalcillin/ }))

@@ -1,3 +1,4 @@
+import { formatCalendarDate, formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   Dialog,
@@ -22,7 +23,13 @@ import {
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { FormSection } from '../../shared/components/FormSection'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -53,6 +60,8 @@ export function AttendanceListPage() {
   const create = useCreateAttendance()
   const update = useUpdateAttendance()
   const { notify } = useNotification()
+  const { user } = useAuth()
+  const canRecordAttendance = hasPermission(user, 'attendance.create')
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -98,9 +107,8 @@ export function AttendanceListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <FormControl size="small" sx={{ minWidth: 220 }}>
+      <FilterBar>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="attendance-employee">Employee</InputLabel>
             <Select
               label="Employee"
@@ -119,7 +127,7 @@ export function AttendanceListPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="attendance-status">Status</InputLabel>
             <Select
               label="Status"
@@ -136,8 +144,7 @@ export function AttendanceListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading attendance" />}
       {query.isError && (
         <ErrorState
@@ -147,8 +154,19 @@ export function AttendanceListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canRecordAttendance ? (
+              <Button onClick={() => setEditor('new')} variant="contained">
+                Record attendance
+              </Button>
+            ) : undefined
+          }
+          description={
+            canRecordAttendance
+              ? 'Record attendance for a work date or adjust the employee and status filters.'
+              : 'No attendance matches the current filters.'
+          }
           title="No attendance records"
-          description="Record a work date or adjust the filters."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -168,13 +186,13 @@ export function AttendanceListPage() {
               <TableBody>
                 {query.data.data.map((row) => (
                   <TableRow hover key={row.id}>
-                    <TableCell>{row.workDate}</TableCell>
+                    <TableCell>{formatCalendarDate(row.workDate)}</TableCell>
                     <TableCell>
                       {row.employee.firstName} {row.employee.lastName}
                     </TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{row.checkInAt ? new Date(row.checkInAt).toLocaleString() : '—'}</TableCell>
-                    <TableCell>{row.checkOutAt ? new Date(row.checkOutAt).toLocaleString() : '—'}</TableCell>
+                    <TableCell><StatusChip value={row.status} /></TableCell>
+                    <TableCell>{row.checkInAt ? formatHospitalDateTime(row.checkInAt) : '—'}</TableCell>
+                    <TableCell>{row.checkOutAt ? formatHospitalDateTime(row.checkOutAt) : '—'}</TableCell>
                     <TableCell align="right">
                       <Can permission="attendance.update">
                         <Button onClick={() => setEditor(row)} size="small">Edit</Button>
@@ -197,63 +215,73 @@ export function AttendanceListPage() {
         <DialogTitle>{editor === 'new' ? 'Record attendance' : 'Edit attendance'}</DialogTitle>
         <Stack component="form" onSubmit={(event) => void submit(event)}>
           <DialogContent>
-            <Stack spacing={2}>
+            <Stack spacing={3}>
               {editor === 'new' && (
-                <>
+                <FormSection title="Assignment">
+                  <Stack spacing={2}>
+                    <FormControl fullWidth required>
+                      <InputLabel id="attendance-form-employee">Employee</InputLabel>
+                      <Select defaultValue="" label="Employee" labelId="attendance-form-employee" name="employeeId">
+                        {(employees.data?.data ?? []).map((employee) => (
+                          <MenuItem key={employee.id} value={employee.id}>
+                            {employee.firstName} {employee.lastName} ({employee.employmentStatus})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <TextField label="Work date" name="workDate" required type="date" slotProps={{ inputLabel: { shrink: true } }} />
+                  </Stack>
+                </FormSection>
+              )}
+              <FormSection title="Attendance">
+                <Stack spacing={2}>
                   <FormControl fullWidth required>
-                    <InputLabel id="attendance-form-employee">Employee</InputLabel>
-                    <Select defaultValue="" label="Employee" labelId="attendance-form-employee" name="employeeId">
-                      {(employees.data?.data ?? []).map((employee) => (
-                        <MenuItem key={employee.id} value={employee.id}>
-                          {employee.firstName} {employee.lastName} ({employee.employmentStatus})
-                        </MenuItem>
+                    <InputLabel id="attendance-form-status">Status</InputLabel>
+                    <Select
+                      defaultValue={editor && editor !== 'new' ? editor.status : 'present'}
+                      label="Status"
+                      labelId="attendance-form-status"
+                      name="status"
+                    >
+                      {attendanceStatuses.map((value) => (
+                        <MenuItem key={value} value={value}>{value}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                  <TextField label="Work date" name="workDate" required type="date" slotProps={{ inputLabel: { shrink: true } }} />
-                </>
-              )}
-              <FormControl fullWidth required>
-                <InputLabel id="attendance-form-status">Status</InputLabel>
-                <Select
-                  defaultValue={editor && editor !== 'new' ? editor.status : 'present'}
-                  label="Status"
-                  labelId="attendance-form-status"
-                  name="status"
-                >
-                  {attendanceStatuses.map((value) => (
-                    <MenuItem key={value} value={value}>{value}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                defaultValue={
-                  editor && editor !== 'new' && editor.checkInAt
-                    ? instantToLocalInput(editor.checkInAt)
-                    : ''
-                }
-                label="Check-in"
-                name="checkInAt"
-                slotProps={{ inputLabel: { shrink: true } }}
-                type="datetime-local"
-              />
-              <TextField
-                defaultValue={
-                  editor && editor !== 'new' && editor.checkOutAt
-                    ? instantToLocalInput(editor.checkOutAt)
-                    : ''
-                }
-                label="Check-out"
-                name="checkOutAt"
-                slotProps={{ inputLabel: { shrink: true } }}
-                type="datetime-local"
-              />
-              <TextField
-                defaultValue={editor && editor !== 'new' ? editor.note ?? '' : ''}
-                label="Note"
-                name="note"
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-              />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      defaultValue={
+                        editor && editor !== 'new' && editor.checkInAt
+                          ? instantToLocalInput(editor.checkInAt)
+                          : ''
+                      }
+                      fullWidth
+                      label="Check-in"
+                      name="checkInAt"
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      type="datetime-local"
+                    />
+                    <TextField
+                      defaultValue={
+                        editor && editor !== 'new' && editor.checkOutAt
+                          ? instantToLocalInput(editor.checkOutAt)
+                          : ''
+                      }
+                      fullWidth
+                      label="Check-out"
+                      name="checkOutAt"
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      type="datetime-local"
+                    />
+                  </Stack>
+                  <TextField
+                    defaultValue={editor && editor !== 'new' ? editor.note ?? '' : ''}
+                    label="Note"
+                    name="note"
+                    slotProps={{ htmlInput: { maxLength: 500 } }}
+                  />
+                </Stack>
+              </FormSection>
             </Stack>
           </DialogContent>
           <DialogActions>

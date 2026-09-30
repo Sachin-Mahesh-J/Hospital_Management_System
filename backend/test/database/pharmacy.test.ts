@@ -25,6 +25,7 @@ const tokens = new Map<string, string>()
 const userIdByRole = new Map<string, string>()
 
 const pharmacyAdmin = [
+  PERMISSIONS.medicineRead,
   PERMISSIONS.inventoryRead,
   PERMISSIONS.stockAdjust,
   PERMISSIONS.stockMovementRead,
@@ -394,7 +395,7 @@ describe('pharmacy inventory and dispensing', () => {
   }
 
   it('lets the pharmacist read the active medicine catalog', async () => {
-    const response = await authorized('get', '/api/v1/medicines', 'pharmacist')
+    const response = await authorized('get', '/api/v1/medicines?status=active', 'pharmacist')
     expect(response.status).toBe(200)
     const codes = response.body.data.map((row: { code: string }) => row.code)
     expect(codes).toContain(`MED-${prefix}-A`)
@@ -762,11 +763,18 @@ describe('pharmacy inventory and dispensing', () => {
     }
   })
 
-  it('does not expose catalog write, billing, or movement mutation endpoints', async () => {
-    expect((await authorized('post', '/api/v1/medicines', 'pharmacist').send({})).status).toBe(404)
+  it('does not grant catalogue write, billing, or movement mutation to the pharmacist', async () => {
+    expect((await authorized('post', '/api/v1/medicines', 'pharmacist').send({
+      code: `${prefix}-PHARM`,
+      genericName: 'Forbiddencillin',
+      dosageForm: 'tablet',
+      inventoryUnit: 'tablet',
+      currency: 'LKR',
+    })).status).toBe(403)
     expect((await authorized('patch', `/api/v1/medicines/${activeMedicineId}`, 'pharmacist').send({
-      status: 'inactive',
-    })).status).toBe(404)
+      genericName: 'Forbidden',
+    })).status).toBe(403)
+    expect((await authorized('post', `/api/v1/medicines/${activeMedicineId}/deactivate`, 'pharmacist').send()).status).toBe(403)
     expect((await authorized('post', '/api/v1/invoices', 'pharmacist').send({})).status).toBe(403)
     expect((await authorized('get', '/api/v1/pharmacy/reports', 'administrator')).status).toBe(404)
   })

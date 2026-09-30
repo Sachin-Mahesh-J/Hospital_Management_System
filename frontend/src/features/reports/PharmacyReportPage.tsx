@@ -18,11 +18,16 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import { ApiError } from '../../api/client'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
+import { CategoryChart } from '../../shared/components/CategoryChart'
+import { MetricCard } from '../../shared/components/MetricCard'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../shared/components/StateViews'
+import { formatCalendarDate } from '../../shared/datetime/hospitalTime'
 import { ReportPageFrame } from './ReportPageFrame'
 import { usePharmacyReport } from './hooks'
 import {
@@ -38,24 +43,26 @@ export function PharmacyReportPage() {
   return (
     <ReportPageFrame
       title="Pharmacy report"
-      description="Low-stock medicines use current stock versus medicines.low_stock_threshold. Near-expiry batches expire within 30 hospital-local days and are not already expired. Expired remaining stock is counted separately."
+      description="Low-stock medicines and batches nearing expiry."
       onRefresh={() => void query.refetch()}
     >
-      <FormControl className="no-print" sx={{ maxWidth: 280 }}>
-        <InputLabel id="pharmacy-section">Section</InputLabel>
-        <Select
-          label="Section"
-          labelId="pharmacy-section"
-          onChange={(event) => {
-            setSection(event.target.value as PharmacyReportSection)
-            setPage(1)
-          }}
-          value={section}
-        >
-          <MenuItem value="low_stock">Low stock</MenuItem>
-          <MenuItem value="near_expiry">Near expiry</MenuItem>
-        </Select>
-      </FormControl>
+      <FilterBar>
+        <FormControl className="no-print" size="small" sx={filterControlSx}>
+          <InputLabel id="pharmacy-section">Section</InputLabel>
+          <Select
+            label="Section"
+            labelId="pharmacy-section"
+            onChange={(event) => {
+              setSection(event.target.value as PharmacyReportSection)
+              setPage(1)
+            }}
+            value={section}
+          >
+            <MenuItem value="low_stock">Low stock</MenuItem>
+            <MenuItem value="near_expiry">Near expiry</MenuItem>
+          </Select>
+        </FormControl>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading pharmacy report" />}
       {query.isError && (
         <ErrorState
@@ -64,23 +71,36 @@ export function PharmacyReportPage() {
         />
       )}
       {query.data && (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <Card sx={{ flex: 1 }}>
+        <Stack spacing={2}>
+          <Typography variant="h6">Summary</Typography>
+          <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            <MetricCard
+              alert={query.data.summary.lowStockMedicineCount > 0}
+              label="Low-stock medicines"
+              value={String(query.data.summary.lowStockMedicineCount)}
+            />
+            <MetricCard
+              alert={query.data.summary.nearExpiryBatchCount > 0}
+              label="Near-expiry batches"
+              value={String(query.data.summary.nearExpiryBatchCount)}
+            />
+            <MetricCard
+              alert={query.data.summary.expiredBatchCount > 0}
+              label="Expired batches with stock"
+              value={String(query.data.summary.expiredBatchCount)}
+            />
+          </Stack>
+          <Card>
             <CardContent>
-              <Typography color="text.secondary" variant="body2">Low-stock medicines</Typography>
-              <Typography variant="h5">{query.data.summary.lowStockMedicineCount}</Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography color="text.secondary" variant="body2">Near-expiry batches</Typography>
-              <Typography variant="h5">{query.data.summary.nearExpiryBatchCount}</Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography color="text.secondary" variant="body2">Expired batches with stock</Typography>
-              <Typography variant="h5">{query.data.summary.expiredBatchCount}</Typography>
+              <CategoryChart
+                data={[
+                  { label: 'Low stock', value: query.data.summary.lowStockMedicineCount },
+                  { label: 'Near expiry', value: query.data.summary.nearExpiryBatchCount },
+                  { label: 'Expired with stock', value: query.data.summary.expiredBatchCount },
+                ]}
+                emptyMessage="No pharmacy alerts."
+                title="Pharmacy alerts"
+              />
             </CardContent>
           </Card>
         </Stack>
@@ -90,14 +110,14 @@ export function PharmacyReportPage() {
           title="No pharmacy rows found"
           description={
             section === 'low_stock'
-              ? 'No medicines currently have stock at or below a configured threshold greater than zero.'
-              : 'No unexpired batches with remaining stock expire within 30 hospital-local days.'
+              ? 'No medicines are at or below their low-stock threshold.'
+              : 'No batches are nearing expiry.'
           }
         />
       )}
       {query.data && query.data.data.length > 0 && section === 'low_stock' && (
-        <>
-          <TableContainer component={Paper}>
+          <Stack spacing={1}>
+            <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -128,11 +148,11 @@ export function PharmacyReportPage() {
             page={page}
             sx={{ alignSelf: 'center' }}
           />
-        </>
+        </Stack>
       )}
       {query.data && query.data.data.length > 0 && section === 'near_expiry' && (
-        <>
-          <TableContainer component={Paper}>
+          <Stack spacing={1}>
+            <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -146,7 +166,7 @@ export function PharmacyReportPage() {
                 {query.data.data.map((row) => (
                   !isLowStockRow(row) && (
                     <TableRow key={row.id}>
-                      <TableCell>{row.expiryDate}</TableCell>
+                      <TableCell>{formatCalendarDate(row.expiryDate)}</TableCell>
                       <TableCell>{row.batchNumber}</TableCell>
                       <TableCell>{row.medicine.genericName}</TableCell>
                       <TableCell>
@@ -165,7 +185,7 @@ export function PharmacyReportPage() {
             page={page}
             sx={{ alignSelf: 'center' }}
           />
-        </>
+        </Stack>
       )}
     </ReportPageFrame>
   )

@@ -121,7 +121,7 @@ describe('prescription list and detail', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('Fictional Patient')).toBeVisible()
-    expect(screen.getByText('active')).toBeVisible()
+    expect(screen.getByText('Active')).toBeVisible()
   })
 
   it('cancels an active prescription and hides cancel without permission', async () => {
@@ -316,6 +316,11 @@ describe('prescription creation medicine lookup', () => {
           </AuthContext>
         </NotificationProvider>
       </QueryClientProvider>,
+    )
+    await waitFor(() =>
+      expect(prescriptionApi.fetchMedicines).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active' }),
+      ),
     )
     fireEvent.mouseDown(await screen.findByLabelText(/Medicine/))
     fireEvent.click(await screen.findByRole('option', { name: /Fictionalcillin/ }))

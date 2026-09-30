@@ -13,7 +13,7 @@ export function AdmissionCreatePage() {
   return (
     <Page
       title="Register admission"
-      description="Create a minimal inpatient admission. The server assigns the admission number, status, and admission time."
+      description="Create an inpatient admission. The admission number is assigned automatically."
       actions={<Button component={Link} to="/admissions">Cancel</Button>}
     >
       <AdmissionForm

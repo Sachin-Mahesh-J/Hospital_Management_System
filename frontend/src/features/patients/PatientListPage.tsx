@@ -19,7 +19,12 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -32,6 +37,8 @@ export function PatientListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<PatientStatus | ''>('')
+  const { user } = useAuth()
+  const canRegisterPatient = hasPermission(user, 'patient.create')
   const query = usePatients({
     page,
     pageSize: 20,
@@ -49,7 +56,7 @@ export function PatientListPage() {
   return (
     <Page
       title="Patients"
-      description="Search and manage patient demographic records."
+      description="Search and manage patient demographic records. Documents are managed from each patient's detail page."
       actions={
         <Can permission="patient.create">
           <Button component={Link} to="/patients/new" variant="contained">
@@ -58,9 +65,8 @@ export function PatientListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: 1 }}>
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: '2 1 280px', minWidth: 0 }}>
             <TextField
               defaultValue={search}
               fullWidth
@@ -71,7 +77,7 @@ export function PatientListPage() {
             />
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="patient-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -88,8 +94,7 @@ export function PatientListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading patients" />}
       {query.isError && (
@@ -100,8 +105,19 @@ export function PatientListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            <Can permission="patient.create">
+              <Button component={Link} to="/patients/new" variant="contained">
+                Register patient
+              </Button>
+            </Can>
+          }
           title="No patients found"
-          description="Adjust the search or status filter, or register a patient."
+          description={
+            canRegisterPatient
+              ? 'Adjust the search or status filter, or register a new patient.'
+              : 'No patients match the current search or status filter.'
+          }
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -129,7 +145,7 @@ export function PatientListPage() {
                     </TableCell>
                     <TableCell>{patient.sexAtRegistration?.replace('_', ' ') ?? 'Not recorded'}</TableCell>
                     <TableCell>{patient.phone ?? 'Not recorded'}</TableCell>
-                    <TableCell>{patient.status}</TableCell>
+                    <TableCell><StatusChip value={patient.status} /></TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/patients/${patient.id}`}>
                         View

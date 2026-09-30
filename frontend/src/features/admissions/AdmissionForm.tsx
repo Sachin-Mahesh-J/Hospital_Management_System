@@ -13,6 +13,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
+import { FormSection } from '../../shared/components/FormSection'
 import { useDoctors } from '../doctors/hooks'
 import { usePatients } from '../patients/hooks'
 import type { AdmissionInput } from './types'
@@ -77,49 +78,55 @@ export function AdmissionForm({ isPending, onSubmit }: AdmissionFormProps) {
     <Paper sx={{ p: { xs: 2, md: 3 } }}>
       <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
         {error && <Alert severity="error">{error}</Alert>}
-        {canReadPatients ? (
-          <FormControl fullWidth>
-            <InputLabel id="admission-patient">Patient</InputLabel>
-            <Select
-              label="Patient"
-              labelId="admission-patient"
-              onChange={(event) => setPatientId(event.target.value)}
-              value={patientId}
-            >
-              {eligiblePatients.map((patient) => (
-                <MenuItem key={patient.id} value={patient.id}>
-                  {patient.firstName} {patient.lastName} ({patient.patientNumber})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ) : (
-          <Alert severity="warning">Patient lookup is required to register an admission.</Alert>
-        )}
-        {canReadDoctors && (
-          <FormControl fullWidth>
-            <InputLabel id="admission-doctor">Attending doctor (optional)</InputLabel>
-            <Select
-              label="Attending doctor (optional)"
-              labelId="admission-doctor"
-              onChange={(event) => setAttendingDoctorId(event.target.value)}
-              value={attendingDoctorId}
-            >
-              <MenuItem value="">Not assigned</MenuItem>
-              {eligibleDoctors.map((doctor) => (
-                <MenuItem key={doctor.id} value={doctor.id}>
-                  {doctor.employee.firstName} {doctor.employee.lastName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-        <TextField
-          label="Admission reason"
-          minRows={3}
-          multiline
-          name="reason"
-        />
+        <FormSection title="Patient and care team">
+          <Stack spacing={2}>
+            {canReadPatients ? (
+              <FormControl fullWidth>
+                <InputLabel id="admission-patient">Patient</InputLabel>
+                <Select
+                  label="Patient"
+                  labelId="admission-patient"
+                  onChange={(event) => setPatientId(event.target.value)}
+                  value={patientId}
+                >
+                  {eligiblePatients.map((patient) => (
+                    <MenuItem key={patient.id} value={patient.id}>
+                      {patient.firstName} {patient.lastName} ({patient.patientNumber})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Alert severity="warning">Patient lookup is required to register an admission.</Alert>
+            )}
+            {canReadDoctors && (
+              <FormControl fullWidth>
+                <InputLabel id="admission-doctor">Attending doctor (optional)</InputLabel>
+                <Select
+                  label="Attending doctor (optional)"
+                  labelId="admission-doctor"
+                  onChange={(event) => setAttendingDoctorId(event.target.value)}
+                  value={attendingDoctorId}
+                >
+                  <MenuItem value="">Not assigned</MenuItem>
+                  {eligibleDoctors.map((doctor) => (
+                    <MenuItem key={doctor.id} value={doctor.id}>
+                      {doctor.employee.firstName} {doctor.employee.lastName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Stack>
+        </FormSection>
+        <FormSection title="Clinical">
+          <TextField
+            label="Admission reason"
+            minRows={3}
+            multiline
+            name="reason"
+          />
+        </FormSection>
         <Button disabled={isPending} type="submit" variant="contained">
           {isPending ? 'Registering…' : 'Register admission'}
         </Button>

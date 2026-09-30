@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -7,12 +8,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { FormSection } from '../../shared/components/FormSection'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { formatStatusLabel } from '../../shared/components/formatStatusLabel'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import {
   useCollectLabSample,
@@ -28,11 +31,15 @@ import {
   type LabRequestItem,
 } from './types'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -97,12 +104,12 @@ function ItemActions({
 
   return (
     <Stack spacing={2}>
-      <Detail label="Item status" value={item.status} />
+      <Detail label="Item status" value={<StatusChip value={item.status} />} />
       <Detail
         label="Collected"
         value={
           item.sampleCollectedAt
-            ? `${new Date(item.sampleCollectedAt).toLocaleString()}${
+            ? `${formatHospitalDateTime(item.sampleCollectedAt)}${
               item.sampleCollectedBy
                 ? ` by ${labEmployeeLabel(item.sampleCollectedBy)}`
                 : ''
@@ -118,7 +125,7 @@ function ItemActions({
           <Detail label="Result note" value={latest.resultNote} />
           <Detail
             label="Entered"
-            value={`${new Date(latest.enteredAt).toLocaleString()} by ${labEmployeeLabel(latest.enteredBy)}`}
+            value={`${formatHospitalDateTime(latest.enteredAt)} by ${labEmployeeLabel(latest.enteredBy)}`}
           />
         </>
       )}
@@ -139,14 +146,20 @@ function ItemActions({
       <Can permission="lab_result.enter">
         {canEnterResult(item.status) && (
           <Stack component="form" spacing={1.5} onSubmit={(event) => void handleResult(event)}>
-            {resultError && <Alert severity="error">{resultError}</Alert>}
-            <TextField label="Result value" name="resultValue" required />
-            <TextField label="Unit" name="resultUnit" />
-            <TextField label="Reference range snapshot" name="referenceRangeSnapshot" />
-            <TextField label="Result note" multiline name="resultNote" />
-            <Button disabled={enter.isPending} type="submit" variant="contained">
-              {enter.isPending ? 'Saving…' : 'Enter result'}
-            </Button>
+            <FormSection title="Enter result">
+              <Stack spacing={1.5}>
+                {resultError && <Alert severity="error">{resultError}</Alert>}
+                <TextField label="Result value" name="resultValue" required />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField fullWidth label="Unit" name="resultUnit" />
+                  <TextField fullWidth label="Reference range snapshot" name="referenceRangeSnapshot" />
+                </Stack>
+                <TextField label="Result note" multiline name="resultNote" />
+                <Button disabled={enter.isPending} type="submit" variant="contained">
+                  {enter.isPending ? 'Saving…' : 'Enter result'}
+                </Button>
+              </Stack>
+            </FormSection>
           </Stack>
         )}
       </Can>
@@ -158,10 +171,13 @@ export function LaboratoryDetailPage() {
   const { requestId = '' } = useParams()
   const query = useLabRequest(requestId)
 
-  if (query.isLoading) return <LoadingState label="Loading laboratory request" />
+  if (query.isLoading) {
+    return <PageLoading title="Laboratory request" label="Loading laboratory request information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Laboratory request"
         message={query.error instanceof ApiError ? query.error.message : 'Laboratory request could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -172,7 +188,9 @@ export function LaboratoryDetailPage() {
 
   return (
     <Page
-      title={`Laboratory request (${request.status})`}
+      help="Each test moves from ordered to collected to completed as sample collection and result entry are recorded. Results can be entered only after collection."
+      helpLabel="Laboratory request lifecycle"
+      title={`Laboratory request (${formatStatusLabel(request.status)})`}
       description={labPatientLabel(request.patient)}
       actions={
         <Stack direction="row" spacing={1}>
@@ -186,8 +204,8 @@ export function LaboratoryDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={request.status} />
-            <Detail label="Requested" value={new Date(request.requestedAt).toLocaleString()} />
+            <Detail label="Status" value={<StatusChip value={request.status} />} />
+            <Detail label="Requested" value={formatHospitalDateTime(request.requestedAt)} />
           </Stack>
           <Divider />
           <Detail

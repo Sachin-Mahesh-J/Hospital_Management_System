@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -6,24 +7,30 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { formatStatusLabel } from '../../shared/components/formatStatusLabel'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { usePrescriptions } from '../prescriptions/hooks'
 import { useFinalizeMedicalRecord, useMedicalRecord } from './hooks'
 import { authorLabel, patientRecordLabel } from './types'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -45,11 +52,15 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
   }, canReadPrescriptions)
   const { notify } = useNotification()
   const [finalizeError, setFinalizeError] = useState<string | null>(null)
+  const [confirmFinalize, setConfirmFinalize] = useState(false)
 
-  if (query.isLoading) return <LoadingState label="Loading medical record" />
+  if (query.isLoading) {
+    return <PageLoading title="Medical record" label="Loading medical record information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Medical record"
         message={query.error instanceof ApiError ? query.error.message : 'Medical record could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -60,8 +71,10 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
 
   return (
     <Page
+      help="Finalizing locks a draft; further changes require an authorized amendment. Final records can receive new prescriptions."
+      helpLabel="Finalizing medical records"
       title={patientRecordLabel(record.patient)}
-      description={`${record.status} medical record`}
+      description={`${formatStatusLabel(record.status)} medical record`}
       actions={
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
           <Button component={Link} to="/medical-records">Back to records</Button>
@@ -86,11 +99,11 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
         <Stack spacing={2.5}>
           <Typography component="h2" variant="h6">Record</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={record.status} />
-            <Detail label="Occurred" value={new Date(record.occurredAt).toLocaleString()} />
+            <Detail label="Status" value={<StatusChip value={record.status} />} />
+            <Detail label="Occurred" value={formatHospitalDateTime(record.occurredAt)} />
             <Detail
               label="Finalized"
-              value={record.finalizedAt ? new Date(record.finalizedAt).toLocaleString() : null}
+              value={record.finalizedAt ? formatHospitalDateTime(record.finalizedAt) : null}
             />
           </Stack>
           <Divider />
@@ -101,7 +114,7 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
           <Detail
             label="Appointment context"
             value={record.appointment
-              ? `${record.appointment.status} (${new Date(record.appointment.startsAt).toLocaleString()})`
+              ? `${record.appointment.status} (${formatHospitalDateTime(record.appointment.startsAt)})`
               : null}
           />
           <Detail
@@ -177,7 +190,10 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
                   sx={{ display: 'block' }}
                   to={`/prescriptions/${prescription.id}`}
                 >
-                  {prescription.status} — {new Date(prescription.prescribedAt).toLocaleString()}
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <StatusChip value={prescription.status} />
+                    <span>{formatHospitalDateTime(prescription.prescribedAt)}</span>
+                  </Stack>
                 </Button>
               ))
             : <Typography color="text.secondary">No prescriptions on this record.</Typography>}
@@ -189,24 +205,34 @@ function MedicalRecordDetail({ medicalRecordId }: { medicalRecordId: string }) {
         {record.status === 'draft' && (
           <Button
             disabled={finalize.isPending}
-            onClick={() => {
-              setFinalizeError(null)
-              void finalize.mutateAsync().then(() => {
-                notify('Medical record finalized.', 'success')
-              }).catch((caught: unknown) => {
-                setFinalizeError(
-                  caught instanceof ApiError
-                    ? caught.message
-                    : 'The medical record could not be finalized.',
-                )
-              })
-            }}
+            onClick={() => setConfirmFinalize(true)}
             variant="contained"
           >
             {finalize.isPending ? 'Finalizing…' : 'Finalize record'}
           </Button>
         )}
       </Can>
+      <ConfirmDialog
+        confirmLabel="Finalize this record"
+        description="Finalizing locks this draft. Further changes require an authorized amendment rather than editing the original draft."
+        onClose={() => setConfirmFinalize(false)}
+        onConfirm={() => {
+          setConfirmFinalize(false)
+          setFinalizeError(null)
+          void finalize.mutateAsync().then(() => {
+            notify('Medical record finalized.', 'success')
+          }).catch((caught: unknown) => {
+            setFinalizeError(
+              caught instanceof ApiError
+                ? caught.message
+                : 'The medical record could not be finalized.',
+            )
+          })
+        }}
+        open={confirmFinalize}
+        pending={finalize.isPending}
+        title="Finalize medical record?"
+      />
     </Page>
   )
 }

@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   Pagination,
@@ -13,6 +14,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -38,8 +40,8 @@ export function PrescriptionListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          description="Prescriptions appear here after they are created from finalized medical records."
           title="No prescriptions found"
-          description="Prescriptions are created from finalized medical records."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -58,11 +60,11 @@ export function PrescriptionListPage() {
               <TableBody>
                 {query.data.data.map((prescription) => (
                   <TableRow hover key={prescription.id}>
-                    <TableCell>{new Date(prescription.prescribedAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(prescription.prescribedAt)}</TableCell>
                     <TableCell>
                       {prescription.patient.firstName} {prescription.patient.lastName}
                     </TableCell>
-                    <TableCell>{prescription.status}</TableCell>
+                    <TableCell><StatusChip value={prescription.status} /></TableCell>
                     <TableCell>{prescription.itemCount}</TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/prescriptions/${prescription.id}`}>

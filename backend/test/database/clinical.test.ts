@@ -41,6 +41,7 @@ const roleMatrix = {
   administrator: [
     PERMISSIONS.medicalRecordRead,
     PERMISSIONS.prescriptionRead,
+    PERMISSIONS.medicineRead,
     PERMISSIONS.patientRead,
     PERMISSIONS.patientCreate,
     PERMISSIONS.departmentCreate,
@@ -797,14 +798,15 @@ describe('medical record workflow', () => {
     ).toBe(409)
   })
 
-  it('lists only active medicines and hides the catalog from non-prescribers', async () => {
-    const doctorList = await authorized('get', '/api/v1/medicines', 'doctor')
+  it('lists only active medicines for new-prescription selection', async () => {
+    const doctorList = await authorized('get', '/api/v1/medicines?status=active', 'doctor')
     expect(doctorList.status).toBe(200)
     const codes = doctorList.body.data.map((row: { code: string }) => row.code)
     expect(codes).toContain(`MED-${prefix}-A`)
     expect(codes).not.toContain(`MED-${prefix}-I`)
-    expect((await authorized('get', '/api/v1/medicines', 'pharmacist')).status).toBe(200)
-    expect((await authorized('get', '/api/v1/medicines', 'administrator')).status).toBe(403)
+    expect((await authorized('get', '/api/v1/medicines?status=active', 'pharmacist')).status).toBe(200)
+    expect((await authorized('get', '/api/v1/medicines', 'administrator')).status).toBe(200)
+    expect((await authorized('get', '/api/v1/medicines', 'nurse')).status).toBe(403)
   })
 
   it('enforces prescription.read independently of patient.read', async () => {

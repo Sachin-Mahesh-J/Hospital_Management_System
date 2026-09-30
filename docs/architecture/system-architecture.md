@@ -99,6 +99,10 @@ The React application is organized by the same user-facing features plus shared
 infrastructure:
 
 - `app`: routing, providers, theme, and application shell.
+- The authenticated shell is a left navigation drawer (expanded, collapsed with
+  tooltips, or a temporary drawer on small viewports) plus a top bar for page
+  title, account actions, and Sign out. Primary navigation is grouped, permission
+  filtered, and must not require horizontal page scrolling.
 - `features`: patients, departments, employees, doctors, doctor schedules,
   appointments, admissions, medical records, prescriptions, laboratory, pharmacy, billing,
   and reports.

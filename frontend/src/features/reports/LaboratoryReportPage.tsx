@@ -1,3 +1,4 @@
+import { formatHospitalDateTime, hospitalToday } from '../../shared/datetime/hospitalTime'
 import {
   FormControl,
   InputLabel,
@@ -5,7 +6,6 @@ import {
   Pagination,
   Paper,
   Select,
-  Stack,
   TextField,
   Table,
   TableBody,
@@ -18,6 +18,9 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/authContext'
 import { hasAnyPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -39,7 +42,7 @@ const statuses = [
 export function LaboratoryReportPage() {
   const { user } = useAuth()
   const dashboard = useDashboard(hasAnyPermission(user, REPORT_PERMISSIONS))
-  const hospitalDate = dashboard.data?.hospitalDate ?? ''
+  const hospitalDate = dashboard.data?.hospitalDate ?? hospitalToday()
   const [fromOverride, setFromOverride] = useState<string | null>(null)
   const [toOverride, setToOverride] = useState<string | null>(null)
   const from = fromOverride ?? hospitalDate
@@ -61,31 +64,37 @@ export function LaboratoryReportPage() {
   return (
     <ReportPageFrame
       title="Laboratory report"
-      description="Laboratory requests and test statuses for the selected hospital-local dates. Result values and clinical notes are omitted."
+      description="Laboratory requests and test statuses for the selected dates."
       onRefresh={() => void query.refetch()}
     >
-      <Stack className="no-print" direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <FilterBar>
         <TextField
-          slotProps={{ inputLabel: { shrink: true } }}
+          className="no-print"
           label="From"
           onChange={(event) => {
             setFromOverride(event.target.value)
             setPage(1)
           }}
+          size="small"
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={filterControlSx}
           type="date"
           value={from}
         />
         <TextField
-          slotProps={{ inputLabel: { shrink: true } }}
+          className="no-print"
           label="To"
           onChange={(event) => {
             setToOverride(event.target.value)
             setPage(1)
           }}
+          size="small"
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={filterControlSx}
           type="date"
           value={to}
         />
-        <FormControl sx={{ minWidth: 200 }}>
+        <FormControl className="no-print" size="small" sx={filterControlSx}>
           <InputLabel id="lab-report-status">Status</InputLabel>
           <Select
             label="Status"
@@ -102,7 +111,7 @@ export function LaboratoryReportPage() {
             ))}
           </Select>
         </FormControl>
-      </Stack>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading laboratory report" />}
       {query.isError && (
         <ErrorState
@@ -113,7 +122,7 @@ export function LaboratoryReportPage() {
       {query.data && query.data.data.length === 0 && (
         <EmptyState
           title="No laboratory requests found"
-          description="No laboratory requests match the selected hospital-local date range."
+          description="No laboratory requests match the selected dates."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -132,8 +141,8 @@ export function LaboratoryReportPage() {
               <TableBody>
                 {query.data.data.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>{new Date(row.requestedAt).toLocaleString()}</TableCell>
-                    <TableCell>{row.status}</TableCell>
+                    <TableCell>{formatHospitalDateTime(row.requestedAt)}</TableCell>
+                    <TableCell><StatusChip value={row.status} /></TableCell>
                     <TableCell>
                       {row.patient.patientNumber} · {personLabel(row.patient)}
                     </TableCell>

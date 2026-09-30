@@ -21,7 +21,10 @@ import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
 import { useAuth } from '../../auth/authContext'
 import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -38,6 +41,7 @@ export function DoctorListPage() {
   const [departmentId, setDepartmentId] = useState('')
   const { user } = useAuth()
   const canReadDepartments = hasPermission(user, 'department.read')
+  const canCreateDoctor = hasPermission(user, 'doctor.create')
   const departments = useDepartments(
     { page: 1, pageSize: 100 },
     { enabled: canReadDepartments },
@@ -69,9 +73,8 @@ export function DoctorListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: 1 }}>
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: '2 1 280px', minWidth: 0 }}>
             <TextField
               defaultValue={search}
               fullWidth
@@ -83,7 +86,7 @@ export function DoctorListPage() {
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
           {canReadDepartments && (
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="doctor-department-filter">Department</InputLabel>
             <Select
               label="Department"
@@ -101,7 +104,7 @@ export function DoctorListPage() {
             </Select>
           </FormControl>
           )}
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="doctor-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -118,8 +121,7 @@ export function DoctorListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading doctors" />}
       {query.isError && (
@@ -130,8 +132,19 @@ export function DoctorListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canCreateDoctor ? (
+              <Button component={Link} to="/doctors/new" variant="contained">
+                Create doctor profile
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateDoctor
+              ? 'Adjust the search or filters, or create a doctor profile for an existing employee.'
+              : 'No doctor profiles match the current filters.'
+          }
           title="No doctors found"
-          description="Adjust the search or filters, or create a doctor profile for an existing employee."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -155,7 +168,7 @@ export function DoctorListPage() {
                     <TableCell>{doctor.licenseNumber}</TableCell>
                     <TableCell>{doctor.specialization}</TableCell>
                     <TableCell>{doctor.employee.department.name}</TableCell>
-                    <TableCell>{doctor.status}</TableCell>
+                    <TableCell><StatusChip value={doctor.status} /></TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/doctors/${doctor.id}`}>
                         View

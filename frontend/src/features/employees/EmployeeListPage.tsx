@@ -19,6 +19,10 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
 import {
   EmptyState,
@@ -34,6 +38,8 @@ export function EmployeeListPage() {
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus | ''>('')
+  const { user } = useAuth()
+  const canRegisterEmployee = hasPermission(user, 'employee.create')
   const departments = useDepartments({ page: 1, pageSize: 100 })
   const query = useEmployees({
     page,
@@ -62,9 +68,8 @@ export function EmployeeListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: 1 }}>
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ flex: '2 1 280px', minWidth: 0 }}>
             <TextField
               defaultValue={search}
               fullWidth
@@ -75,7 +80,7 @@ export function EmployeeListPage() {
             />
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="employee-department-filter">Department</InputLabel>
             <Select
               label="Department"
@@ -92,7 +97,7 @@ export function EmployeeListPage() {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="employee-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -109,8 +114,7 @@ export function EmployeeListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading employees" />}
       {query.isError && (
@@ -121,8 +125,19 @@ export function EmployeeListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canRegisterEmployee ? (
+              <Button component={Link} to="/employees/new" variant="contained">
+                Register employee
+              </Button>
+            ) : undefined
+          }
+          description={
+            canRegisterEmployee
+              ? 'Adjust the search or filters, or register a new employee.'
+              : 'No employees match the current filters.'
+          }
           title="No employees found"
-          description="Adjust the search or filters, or register an employee."
         />
       )}
       {query.data && query.data.data.length > 0 && (

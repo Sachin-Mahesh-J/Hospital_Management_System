@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   FormControl,
@@ -17,7 +18,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -34,6 +40,8 @@ import {
 export function MedicalRecordListPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<MedicalRecordStatus | ''>('')
+  const { user } = useAuth()
+  const canCreateRecord = hasPermission(user, 'medical_record.create')
   const query = useMedicalRecords({
     page,
     pageSize: 20,
@@ -52,8 +60,8 @@ export function MedicalRecordListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
+      <FilterBar>
+        <FormControl size="small" sx={filterControlSx}>
           <InputLabel id="medical-record-status-filter">Status</InputLabel>
           <Select
             label="Status"
@@ -70,7 +78,7 @@ export function MedicalRecordListPage() {
             ))}
           </Select>
         </FormControl>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading medical records" />}
       {query.isError && (
@@ -81,8 +89,19 @@ export function MedicalRecordListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canCreateRecord ? (
+              <Button component={Link} to="/medical-records/new" variant="contained">
+                New medical record
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateRecord
+              ? 'Adjust the status filter or create a draft medical record.'
+              : 'No medical records match the current filter.'
+          }
           title="No medical records found"
-          description="Adjust the filters or create a draft medical record."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -101,10 +120,10 @@ export function MedicalRecordListPage() {
               <TableBody>
                 {query.data.data.map((record) => (
                   <TableRow hover key={record.id}>
-                    <TableCell>{new Date(record.occurredAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatHospitalDateTime(record.occurredAt)}</TableCell>
                     <TableCell>{patientRecordLabel(record.patient)}</TableCell>
                     <TableCell>{authorLabel(record.author)}</TableCell>
-                    <TableCell>{record.status}</TableCell>
+                    <TableCell><StatusChip value={record.status} /></TableCell>
                     <TableCell align="right">
                       <Button component={Link} size="small" to={`/medical-records/${record.id}`}>
                         View

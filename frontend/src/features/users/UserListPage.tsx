@@ -23,7 +23,14 @@ import {
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
+import { FormSection } from '../../shared/components/FormSection'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -60,6 +67,7 @@ export function UserListPage() {
   const [status, setStatus] = useState<UserStatus | ''>('')
   const [roleCode, setRoleCode] = useState<SystemRoleCode | ''>('')
   const [editor, setEditor] = useState<Editor | null>(null)
+  const [confirm, setConfirm] = useState<{ id: string; action: 'deactivate' | 'reactivate' } | null>(null)
   const employees = useEmployees({ page: 1, pageSize: 100 })
   const query = useUsers({
     page,
@@ -75,6 +83,8 @@ export function UserListPage() {
   const reactivate = useReactivateUser()
   const resetPassword = useResetUserPassword()
   const { notify } = useNotification()
+  const { user } = useAuth()
+  const canCreateUser = hasPermission(user, 'user.create')
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -133,8 +143,10 @@ export function UserListPage() {
 
   return (
     <Page
+      help="Deactivation revokes active sessions and blocks sign-in until reactivation. Users are not deleted. Role changes replace the current role. Password reset revokes that user's sessions and is never displayed after save."
+      helpLabel="User administration"
       title="Users"
-      description="Administrator-only operational accounts. There is no public registration. Passwords are never displayed after save."
+      description="Administrator-only operational accounts. There is no public registration."
       actions={
         <Can permission="user.create">
           <Button onClick={() => setEditor({ kind: 'create' })} variant="contained">
@@ -143,14 +155,12 @@ export function UserListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <Stack component="form" direction={{ xs: 'column', md: 'row' }} spacing={2} onSubmit={submitSearch}>
-            <TextField label="Search username" name="search" size="small" />
+      <FilterBar>
+          <Stack component="form" direction="row" spacing={1} onSubmit={submitSearch} sx={{ ...filterControlSx, flex: '1 1 220px', maxWidth: { sm: 400 } }}>
+            <TextField label="Search username" name="search" size="small" sx={{ flex: 1, minWidth: 0 }} />
             <Button type="submit" variant="outlined">Search</Button>
           </Stack>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
+            <FormControl size="small" sx={filterControlSx}>
               <InputLabel id="user-status">Status</InputLabel>
               <Select
                 label="Status"
@@ -167,7 +177,7 @@ export function UserListPage() {
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <FormControl size="small" sx={filterControlSx}>
               <InputLabel id="user-role">Role</InputLabel>
               <Select
                 label="Role"
@@ -184,9 +194,7 @@ export function UserListPage() {
                 ))}
               </Select>
             </FormControl>
-          </Stack>
-        </Stack>
-      </Paper>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading users" />}
       {query.isError && (
         <ErrorState
@@ -195,7 +203,21 @@ export function UserListPage() {
         />
       )}
       {query.data && query.data.data.length === 0 && (
-        <EmptyState title="No users found" description="Adjust the filters or create a user." />
+        <EmptyState
+          action={
+            canCreateUser ? (
+              <Button onClick={() => setEditor({ kind: 'create' })} variant="contained">
+                Create user
+              </Button>
+            ) : undefined
+          }
+          description={
+            canCreateUser
+              ? 'Adjust the filters or create an operational user account.'
+              : 'No users match the current filters.'
+          }
+          title="No users found"
+        />
       )}
       {query.data && query.data.data.length > 0 && (
         <>
@@ -215,7 +237,7 @@ export function UserListPage() {
                   <TableRow hover key={user.id}>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>{user.role.name || user.role.code}</TableCell>
-                    <TableCell>{user.status}</TableCell>
+                    <TableCell><StatusChip value={user.status} /></TableCell>
                     <TableCell>
                       {user.employee
                         ? `${user.employee.firstName} ${user.employee.lastName}`
@@ -235,20 +257,14 @@ export function UserListPage() {
                       <Can permission="user.deactivate">
                         {user.status === 'active' ? (
                           <Button
-                            onClick={() => void deactivate.mutateAsync(user.id).then(
-                              () => notify('User deactivated.', 'success'),
-                              (error: unknown) => handleError(error, 'Deactivation failed.'),
-                            )}
+                            onClick={() => setConfirm({ id: user.id, action: 'deactivate' })}
                             size="small"
                           >
                             Deactivate
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => void reactivate.mutateAsync(user.id).then(
-                              () => notify('User reactivated.', 'success'),
-                              (error: unknown) => handleError(error, 'Reactivation failed.'),
-                            )}
+                            onClick={() => setConfirm({ id: user.id, action: 'reactivate' })}
                             size="small"
                           >
                             Reactivate
@@ -283,84 +299,95 @@ export function UserListPage() {
         </DialogTitle>
         <Stack component="form" onSubmit={(event) => void submitEditor(event)}>
           <DialogContent>
-            <Stack spacing={2}>
+            <Stack spacing={3}>
               {(editor?.kind === 'create' || editor?.kind === 'edit') && (
-                <>
-                  <TextField
-                    defaultValue={editor.kind === 'edit' ? editor.user.username : ''}
-                    label="Username"
-                    name="username"
-                    required
-                    slotProps={{ htmlInput: { maxLength: 100 } }}
-                  />
-                  <FormControl fullWidth>
-                    <InputLabel id="user-employee">Employee link</InputLabel>
-                    <Select
-                      defaultValue={editor.kind === 'edit' ? editor.user.employee?.id ?? '' : ''}
-                      label="Employee link"
-                      labelId="user-employee"
-                      name="employeeId"
-                    >
-                      <MenuItem value="">Unlinked</MenuItem>
-                      {(employees.data?.data ?? []).map((employee) => (
-                        <MenuItem key={employee.id} value={employee.id}>
-                          {employee.firstName} {employee.lastName} ({employee.employeeNumber})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </>
+                <FormSection title="Account">
+                  <Stack spacing={2}>
+                    <TextField
+                      defaultValue={editor.kind === 'edit' ? editor.user.username : ''}
+                      label="Username"
+                      name="username"
+                      required
+                      slotProps={{ htmlInput: { maxLength: 100 } }}
+                    />
+                    <FormControl fullWidth>
+                      <InputLabel id="user-employee">Employee link</InputLabel>
+                      <Select
+                        defaultValue={editor.kind === 'edit' ? editor.user.employee?.id ?? '' : ''}
+                        label="Employee link"
+                        labelId="user-employee"
+                        name="employeeId"
+                      >
+                        <MenuItem value="">Unlinked</MenuItem>
+                        {(employees.data?.data ?? []).map((employee) => (
+                          <MenuItem key={employee.id} value={employee.id}>
+                            {employee.firstName} {employee.lastName} ({employee.employeeNumber})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                </FormSection>
               )}
               {editor?.kind === 'create' && (
-                <>
-                  <TextField
-                    helperText="12–128 characters, at least one letter and one number. The password is never displayed after save."
-                    label="Initial password"
-                    name="password"
-                    required
-                    type="password"
-                  />
+                <FormSection title="Access">
+                  <Stack spacing={2}>
+                    <TextField
+                      helperText="12–128 characters, at least one letter and one number. The password is never displayed after save."
+                      label="Initial password"
+                      name="password"
+                      required
+                      type="password"
+                    />
+                    <FormControl fullWidth required>
+                      <InputLabel id="create-role">Role</InputLabel>
+                      <Select defaultValue="nurse" label="Role" labelId="create-role" name="roleCode">
+                        {systemRoleCodes.map((value) => (
+                          <MenuItem key={value} value={value}>{value}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth>
+                      <InputLabel id="create-status">Status</InputLabel>
+                      <Select defaultValue="active" label="Status" labelId="create-status" name="status">
+                        {userStatuses.map((value) => (
+                          <MenuItem key={value} value={value}>{value}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                </FormSection>
+              )}
+              {editor?.kind === 'role' && (
+                <FormSection
+                  description="The new role replaces the current role. Access updates on the next authenticated request."
+                  title="Role"
+                >
                   <FormControl fullWidth required>
-                    <InputLabel id="create-role">Role</InputLabel>
-                    <Select defaultValue="nurse" label="Role" labelId="create-role" name="roleCode">
+                    <InputLabel id="change-role">Role</InputLabel>
+                    <Select
+                      defaultValue={editor.user.role.code}
+                      label="Role"
+                      labelId="change-role"
+                      name="roleCode"
+                    >
                       {systemRoleCodes.map((value) => (
                         <MenuItem key={value} value={value}>{value}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                  <FormControl fullWidth>
-                    <InputLabel id="create-status">Status</InputLabel>
-                    <Select defaultValue="active" label="Status" labelId="create-status" name="status">
-                      {userStatuses.map((value) => (
-                        <MenuItem key={value} value={value}>{value}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </>
-              )}
-              {editor?.kind === 'role' && (
-                <FormControl fullWidth required>
-                  <InputLabel id="change-role">Role</InputLabel>
-                  <Select
-                    defaultValue={editor.user.role.code}
-                    label="Role"
-                    labelId="change-role"
-                    name="roleCode"
-                  >
-                    {systemRoleCodes.map((value) => (
-                      <MenuItem key={value} value={value}>{value}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                </FormSection>
               )}
               {editor?.kind === 'password' && (
-                <>
-                  <Typography variant="body2">
-                    Enter a new password for {editor.user.username}. It will not be shown after save.
-                    Existing sessions for that user are revoked.
-                  </Typography>
-                  <TextField label="New password" name="newPassword" required type="password" />
-                </>
+                <FormSection title="New password">
+                  <Stack spacing={2}>
+                    <Typography variant="body2">
+                      Enter a new password for {editor.user.username}. It will not be shown after save.
+                      Existing sessions for that user are revoked.
+                    </Typography>
+                    <TextField label="New password" name="newPassword" required type="password" />
+                  </Stack>
+                </FormSection>
               )}
             </Stack>
           </DialogContent>
@@ -370,6 +397,35 @@ export function UserListPage() {
           </DialogActions>
         </Stack>
       </Dialog>
+      <ConfirmDialog
+        confirmColor={confirm?.action === 'deactivate' ? 'warning' : 'primary'}
+        confirmLabel={confirm?.action === 'deactivate' ? 'Deactivate user' : 'Reactivate user'}
+        description={
+          confirm?.action === 'deactivate'
+            ? 'The user will be unable to sign in. This can be reversed by reactivation. Existing sessions are revoked.'
+            : 'The user will be able to sign in again with their current credentials.'
+        }
+        onClose={() => setConfirm(null)}
+        onConfirm={() => {
+          if (!confirm) return
+          const { id, action } = confirm
+          setConfirm(null)
+          if (action === 'deactivate') {
+            void deactivate.mutateAsync(id).then(
+              () => notify('User deactivated.', 'success'),
+              (error: unknown) => handleError(error, 'Deactivation failed.'),
+            )
+          } else {
+            void reactivate.mutateAsync(id).then(
+              () => notify('User reactivated.', 'success'),
+              (error: unknown) => handleError(error, 'Reactivation failed.'),
+            )
+          }
+        }}
+        open={confirm !== null}
+        pending={deactivate.isPending || reactivate.isPending}
+        title={confirm?.action === 'deactivate' ? 'Deactivate user?' : 'Reactivate user?'}
+      />
     </Page>
   )
 }

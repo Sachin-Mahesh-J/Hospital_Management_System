@@ -1,119 +1,131 @@
+import ChevronLeft from '@mui/icons-material/ChevronLeft'
+import ChevronRight from '@mui/icons-material/ChevronRight'
+import MenuIcon from '@mui/icons-material/Menu'
 import {
   AppBar,
   Box,
   Button,
-  Container,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  ListSubheader,
+  Menu,
+  MenuItem,
   Stack,
   Toolbar,
+  Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material'
-import { useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
-import { Can } from '../auth/Can'
+import { useTheme } from '@mui/material/styles'
+import { useState, type MouseEvent } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
-import { hasAnyPermission } from '../auth/permission'
-import { REPORT_PERMISSIONS } from '../features/reports/permissions'
+import {
+  DRAWER_COLLAPSED_WIDTH,
+  DRAWER_WIDTH,
+  currentNavItem,
+  resolvePageTitle,
+  visibleNavigation,
+  type NavItem,
+} from './navigation'
 
-const navigation = [
-  { label: 'Home', path: '/', permission: null },
-  {
-    label: 'Patients',
-    path: '/patients',
-    permission: 'patient.read',
-  },
-  {
-    label: 'Departments',
-    path: '/departments',
-    permission: 'department.read',
-  },
-  {
-    label: 'Employees',
-    path: '/employees',
-    permission: 'employee.read',
-  },
-  {
-    label: 'Doctors',
-    path: '/doctors',
-    permission: 'doctor.read',
-  },
-  {
-    label: 'Appointments',
-    path: '/appointments',
-    permission: 'appointment.read',
-  },
-  {
-    label: 'Calendar',
-    path: '/appointments/calendar',
-    permission: 'appointment.read',
-  },
-  {
-    label: 'Attendance',
-    path: '/attendance',
-    permission: 'attendance.read',
-  },
-  {
-    label: 'Leave',
-    path: '/leave',
-    permission: 'leave.read',
-  },
-  {
-    label: 'Admissions',
-    path: '/admissions',
-    permission: 'admission.read',
-  },
-  {
-    label: 'Medical records',
-    path: '/medical-records',
-    permission: 'medical_record.read',
-  },
-  {
-    label: 'Prescriptions',
-    path: '/prescriptions',
-    permission: 'prescription.read',
-  },
-  {
-    label: 'Laboratory',
-    path: '/laboratory',
-    permission: 'lab_request.read',
-  },
-  {
-    label: 'Inventory',
-    path: '/pharmacy/inventory',
-    permission: 'inventory.read',
-  },
-  {
-    label: 'Movements',
-    path: '/pharmacy/movements',
-    permission: 'stock.movement.read',
-  },
-  {
-    label: 'Billing',
-    path: '/billing',
-    permission: 'invoice.read',
-  },
-  {
-    label: 'Users',
-    path: '/users',
-    permission: 'user.read',
-  },
-  {
-    label: 'Audit',
-    path: '/audit',
-    permission: 'audit.read',
-  },
-  {
-    label: 'Change password',
-    path: '/change-password',
-    permission: 'identity.password.change',
-  },
-] as const
+function NavEntry({
+  item,
+  collapsed,
+  selected,
+  onNavigate,
+}: {
+  item: NavItem
+  collapsed: boolean
+  selected: boolean
+  onNavigate: () => void
+}) {
+  const Icon = item.icon
+  const button = (
+    <ListItemButton
+      aria-label={collapsed ? item.label : undefined}
+      component={Link}
+      onClick={onNavigate}
+      selected={selected}
+      to={item.path}
+      sx={{
+        borderRadius: 1,
+        flex: 1,
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        minWidth: 0,
+        px: collapsed ? 1 : 1.5,
+      }}
+    >
+      <ListItemIcon sx={{ minWidth: collapsed ? 0 : 40, color: 'inherit' }}>
+        <Icon aria-hidden fontSize="small" />
+      </ListItemIcon>
+      {!collapsed && (
+        <ListItemText
+          primary={item.label}
+          slotProps={{
+            primary: { sx: { overflowWrap: 'anywhere', whiteSpace: 'normal' } },
+          }}
+        />
+      )}
+    </ListItemButton>
+  )
+
+  if (!collapsed) {
+    return (
+      <Box sx={{ mb: 0.25, mx: 1, minWidth: 0 }}>
+        {button}
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ mb: 0.25, mx: 1, minWidth: 0 }}>
+      <Tooltip
+        describeChild
+        placement="right"
+        title={
+          <Box>
+            <Typography variant="subtitle2">{item.label}</Typography>
+            <Typography variant="body2">{item.description}</Typography>
+          </Box>
+        }
+      >
+        {button}
+      </Tooltip>
+    </Box>
+  )
+}
 
 export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const theme = useTheme()
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), {
+    defaultMatches: true,
+    noSsr: true,
+  })
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [accountEl, setAccountEl] = useState<null | HTMLElement>(null)
+
+  const groups = visibleNavigation(user)
+  const desktopCollapsed = isDesktop && collapsed
+  const drawerWidth = desktopCollapsed ? DRAWER_COLLAPSED_WIDTH : DRAWER_WIDTH
+  const pageTitle = resolvePageTitle(location.pathname)
+  const activeItem = currentNavItem(location.pathname)
+  const roleLabel = user?.roles?.[0] ? user.roles[0].replaceAll('_', ' ') : ''
+
+  const closeMobile = () => setMobileOpen(false)
 
   const handleLogout = async () => {
+    setAccountEl(null)
     setIsLoggingOut(true)
     try {
       await logout()
@@ -125,59 +137,185 @@ export function AppShell() {
     }
   }
 
-  return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static">
-        <Toolbar sx={{ gap: 3 }}>
-          <Typography component={Link} to="/" variant="h6" color="inherit" sx={{ textDecoration: 'none' }}>
+  const drawer = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Toolbar sx={{ px: 2, gap: 1, minHeight: 64 }}>
+        {!desktopCollapsed && (
+          <Typography noWrap sx={{ fontWeight: 700 }} variant="subtitle1">
             HMS
           </Typography>
-          <Stack component="nav" direction="row" spacing={1} aria-label="Main navigation">
-            {navigation.map((item) => (
-              item.permission
-                ? (
-                    <Can key={item.path} permission={item.permission}>
-                      <Button color="inherit" component={Link} to={item.path}>
-                        {item.label}
-                      </Button>
-                    </Can>
-                  )
-                : (
-                    <Button
-                      color="inherit"
-                      component={Link}
-                      key={item.path}
-                      to={item.path}
-                    >
-                      {item.label}
-                    </Button>
-                  )
-            ))}
-            {hasAnyPermission(user, REPORT_PERMISSIONS) && (
-              <Button color="inherit" component={Link} to="/reports">
-                Reports
-              </Button>
-            )}
-          </Stack>
-          <Stack
-            direction="row"
-            spacing={2}
-            sx={{ alignItems: 'center', ml: 'auto' }}
-          >
-            <Typography variant="body2">{user?.username}</Typography>
-            <Button
-              color="inherit"
-              disabled={isLoggingOut}
-              onClick={() => void handleLogout()}
+        )}
+        {isDesktop && (
+          <Tooltip title={collapsed ? 'Expand navigation' : 'Collapse navigation'}>
+            <IconButton
+              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              onClick={() => setCollapsed((value) => !value)}
+              size="small"
+              sx={{ ml: desktopCollapsed ? 0 : 'auto' }}
             >
-              {isLoggingOut ? 'Signing out…' : 'Sign out'}
-            </Button>
-          </Stack>
+              {collapsed ? <ChevronRight /> : <ChevronLeft />}
+            </IconButton>
+          </Tooltip>
+        )}
+      </Toolbar>
+      <Divider />
+      <Box component="nav" aria-label="Main navigation" sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
+        {groups.map((group) => (
+          <List
+            key={group.id}
+            dense
+            subheader={
+              desktopCollapsed ? undefined : (
+                <ListSubheader
+                  disableSticky
+                  sx={{ bgcolor: 'transparent', lineHeight: 2, fontSize: 12, textTransform: 'uppercase' }}
+                >
+                  {group.label}
+                </ListSubheader>
+              )
+            }
+          >
+            {group.items.map((item) => (
+              <NavEntry
+                collapsed={desktopCollapsed}
+                item={item}
+                key={item.path}
+                onNavigate={closeMobile}
+                selected={item.path === activeItem?.path}
+              />
+            ))}
+          </List>
+        ))}
+      </Box>
+    </Box>
+  )
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.default' }}>
+      <AppBar
+        color="inherit"
+        elevation={0}
+        position="fixed"
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: `${drawerWidth}px` },
+        }}
+      >
+        <Toolbar sx={{ gap: 1, minHeight: 64 }}>
+          {!isDesktop && (
+            <Tooltip title="Open navigation">
+              <IconButton
+                aria-label="Open navigation"
+                edge="start"
+                onClick={() => setMobileOpen(true)}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography component="h1" noWrap variant="h6">
+              {pageTitle}
+            </Typography>
+          </Box>
+          <Button
+            aria-controls={accountEl ? 'account-menu' : undefined}
+            aria-haspopup="true"
+            aria-label="Account menu"
+            color="inherit"
+            onClick={(event: MouseEvent<HTMLElement>) => setAccountEl(event.currentTarget)}
+            sx={{ maxWidth: { xs: 140, sm: 240 }, textTransform: 'none' }}
+          >
+            <Stack sx={{ alignItems: 'flex-end', minWidth: 0 }}>
+              <Typography noWrap variant="body2">
+                {user?.username}
+              </Typography>
+              {roleLabel && (
+                <Typography color="text.secondary" noWrap variant="caption">
+                  {roleLabel}
+                </Typography>
+              )}
+            </Stack>
+          </Button>
+          <Button
+            color="inherit"
+            disabled={isLoggingOut}
+            onClick={() => void handleLogout()}
+          >
+            {isLoggingOut ? 'Signing out…' : 'Sign out'}
+          </Button>
         </Toolbar>
       </AppBar>
-      <Container component="main" maxWidth="lg" sx={{ py: 5 }}>
+
+      <Menu
+        anchorEl={accountEl}
+        id="account-menu"
+        onClose={() => setAccountEl(null)}
+        open={Boolean(accountEl)}
+      >
+        <MenuItem disabled>
+          {user?.username}
+        </MenuItem>
+        <MenuItem
+          component={Link}
+          onClick={() => setAccountEl(null)}
+          to="/change-password"
+        >
+          Change password
+        </MenuItem>
+        <MenuItem disabled={isLoggingOut} onClick={() => void handleLogout()}>
+          {isLoggingOut ? 'Signing out…' : 'Sign out'}
+        </MenuItem>
+      </Menu>
+
+      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
+        {isDesktop ? (
+          <Drawer
+            open
+            variant="permanent"
+            sx={{
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+                overflowX: 'hidden',
+              },
+            }}
+          >
+            {drawer}
+          </Drawer>
+        ) : (
+          <Drawer
+            ModalProps={{ keepMounted: true }}
+            onClose={closeMobile}
+            open={mobileOpen}
+            variant="temporary"
+            sx={{
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: DRAWER_WIDTH,
+              },
+            }}
+          >
+            {drawer}
+          </Drawer>
+        )}
+      </Box>
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          px: { xs: 2, sm: 3, lg: 4 },
+          py: 3,
+        }}
+      >
+        <Toolbar />
         <Outlet />
-      </Container>
+      </Box>
     </Box>
   )
 }

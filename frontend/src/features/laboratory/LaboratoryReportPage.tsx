@@ -1,8 +1,10 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import { Button, Divider, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useLabRequest } from './hooks'
 import {
   labEmployeeLabel,
@@ -10,11 +12,15 @@ import {
   labTestLabel,
 } from './types'
 
-function Line({ label, value }: { label: string; value: string | null }) {
+function Line({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.25}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -23,10 +29,13 @@ export function LaboratoryReportPage() {
   const { requestId = '' } = useParams()
   const query = useLabRequest(requestId)
 
-  if (query.isLoading) return <LoadingState label="Loading laboratory report" />
+  if (query.isLoading) {
+    return <PageLoading title="Laboratory report" label="Loading laboratory report information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Laboratory report"
         message={query.error instanceof ApiError ? query.error.message : 'Laboratory report could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -38,7 +47,6 @@ export function LaboratoryReportPage() {
   return (
     <Page
       title="Laboratory report"
-      description="Assembled from stored request, collection, and result data. This is not a stored PDF."
       actions={
         <Stack className="no-print" direction="row" spacing={1}>
           <Button onClick={() => window.print()} variant="contained">
@@ -61,8 +69,8 @@ export function LaboratoryReportPage() {
       <Paper sx={{ p: 4 }}>
         <Stack spacing={3}>
           <Line label="Patient" value={labPatientLabel(request.patient)} />
-          <Line label="Request status" value={request.status} />
-          <Line label="Requested" value={new Date(request.requestedAt).toLocaleString()} />
+          <Line label="Request status" value={<StatusChip value={request.status} />} />
+          <Line label="Requested" value={formatHospitalDateTime(request.requestedAt)} />
           <Line
             label="Requesting doctor"
             value={`${labEmployeeLabel(request.requestedBy.employee)} (${request.requestedBy.licenseNumber})`}
@@ -78,12 +86,12 @@ export function LaboratoryReportPage() {
                 <Typography component="h3" variant="h6">
                   {labTestLabel(item.testDefinition)}
                 </Typography>
-                <Line label="Item status" value={item.status} />
+                <Line label="Item status" value={<StatusChip value={item.status} />} />
                 <Line
                   label="Collected"
                   value={
                     item.sampleCollectedAt
-                      ? `${new Date(item.sampleCollectedAt).toLocaleString()}${
+                      ? `${formatHospitalDateTime(item.sampleCollectedAt)}${
                         item.sampleCollectedBy
                           ? ` by ${labEmployeeLabel(item.sampleCollectedBy)}`
                           : ''
@@ -98,7 +106,7 @@ export function LaboratoryReportPage() {
                   label="Entered"
                   value={
                     latest
-                      ? `${new Date(latest.enteredAt).toLocaleString()} by ${labEmployeeLabel(latest.enteredBy)}`
+                      ? `${formatHospitalDateTime(latest.enteredAt)} by ${labEmployeeLabel(latest.enteredBy)}`
                       : null
                   }
                 />

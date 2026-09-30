@@ -1,8 +1,7 @@
 import { Button } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { DoctorForm } from './DoctorForm'
 import { useDoctor, useUpdateDoctor } from './hooks'
@@ -15,10 +14,13 @@ export function DoctorEditPage() {
   const navigate = useNavigate()
   const { notify } = useNotification()
 
-  if (doctorQuery.isLoading) return <LoadingState label="Loading doctor" />
+  if (doctorQuery.isLoading) {
+    return <PageLoading title="Edit doctor profile" label="Loading doctor information..." />
+  }
   if (doctorQuery.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Edit doctor profile"
         message={doctorQuery.error instanceof ApiError ? doctorQuery.error.message : 'Doctor could not be loaded.'}
         onRetry={() => void doctorQuery.refetch()}
       />

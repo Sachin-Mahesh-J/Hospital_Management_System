@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
 import { AuthContext, type AuthContextValue } from '../../auth/authContext'
 import { NotificationProvider } from '../../shared/notifications/NotificationProvider'
@@ -199,6 +199,7 @@ describe('appointment list', () => {
     renderList(['appointment.read', 'patient.read', 'doctor.read'])
     expect(await screen.findByText('Review')).toBeVisible()
     expect(screen.getByText(/Fictional Patient/)).toBeVisible()
+    expect(screen.getByText('1 Jun 2030, 3:30 PM')).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Book appointment' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Calendar' })).toBeVisible()
   })
@@ -349,6 +350,10 @@ describe('appointment detail actions', () => {
 })
 
 describe('appointment calendar', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('loads existing appointments into day week and month views', async () => {
     vi.mocked(appointmentApi.fetchAppointments).mockResolvedValue({
       data: [appointment],
@@ -372,6 +377,36 @@ describe('appointment calendar', () => {
     await waitFor(() => expect(appointmentApi.fetchAppointments).toHaveBeenCalled())
     fireEvent.click(screen.getByRole('button', { name: 'Month' }))
     await waitFor(() => expect(vi.mocked(appointmentApi.fetchAppointments).mock.calls.length).toBeGreaterThan(1))
+  })
+
+  it('opens on hospital today, highlights today, and keeps today after navigation', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-30T04:30:00.000Z'))
+    vi.mocked(appointmentApi.fetchAppointments).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, totalItems: 0, totalPages: 0 },
+    })
+    render(
+      <QueryClientProvider client={createClient()}>
+        <AuthContext value={authValue()}>
+          <MemoryRouter>
+            <AppointmentCalendarPage />
+          </MemoryRouter>
+        </AuthContext>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Appointment calendar' })).toBeVisible()
+    expect(screen.getByText('30 Sep 2026')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Day' }))
+    expect(screen.getByText(/Today/)).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Month' }))
+    expect(screen.getByText('September 2026')).toBeVisible()
+    expect(screen.getAllByText('Today').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('October 2026')).toBeVisible()
+    expect(screen.getByText('Today')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }))
+    expect(screen.getByText('September 2026')).toBeVisible()
   })
 })
 

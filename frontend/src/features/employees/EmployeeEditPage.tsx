@@ -1,8 +1,7 @@
 import { Button } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { EmployeeForm } from './EmployeeForm'
 import { useEmployee, useUpdateEmployee } from './hooks'
@@ -15,10 +14,13 @@ export function EmployeeEditPage() {
   const navigate = useNavigate()
   const { notify } = useNotification()
 
-  if (employeeQuery.isLoading) return <LoadingState label="Loading employee" />
+  if (employeeQuery.isLoading) {
+    return <PageLoading title="Edit employee" label="Loading employee information..." />
+  }
   if (employeeQuery.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Edit employee"
         message={employeeQuery.error instanceof ApiError ? employeeQuery.error.message : 'Employee could not be loaded.'}
         onRetry={() => void employeeQuery.refetch()}
       />

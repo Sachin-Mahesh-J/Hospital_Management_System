@@ -93,6 +93,8 @@ Tests must include unauthorized and conflict paths, not only success cases.
 Test important forms, permission-aware navigation, API error presentation,
 loading/error/empty states, and critical workflow interactions. Add browser end-to-end
 tests for a small number of interview-critical workflows when the UI exists.
+The application shell uses a permission-aware left sidebar; keep
+`aria-label="Main navigation"` and always-visible Sign out in the top bar.
 
 ### Isolation
 

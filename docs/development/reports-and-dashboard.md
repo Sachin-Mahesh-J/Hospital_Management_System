@@ -141,8 +141,15 @@ hospital-local day. Revenue and pharmacy alerts use the definitions above.
 
 The Home page renders metric cards only for present authorized metrics. The
 Reports menu appears only when the user has at least one report permission.
-Each report supports loading, empty, error, refresh, and browser print. Charts,
-CSV, generated PDF, and stored files are not provided.
+Each report supports loading, empty, error, refresh, and browser print. CSV,
+generated PDF, and stored files are not provided.
+
+The dashboard and report UIs may render **category charts only from complete
+summary payloads the API already returns** (dashboard pharmacy-alert counts;
+revenue `summary.byMethod`; pharmacy `summary` counts). They must not treat a
+paginated table page as a full distribution. Time-series appointment, laboratory,
+patient-registration, and daily revenue charts are not implemented; they would need
+additional report summaries.
 
 ## Assumptions
 

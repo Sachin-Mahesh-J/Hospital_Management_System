@@ -1,16 +1,22 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import { Button, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useAdmission } from './hooks'
 import { doctorLabel, patientLabel } from './types'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -23,10 +29,13 @@ export function AdmissionDetailPage() {
 function AdmissionDetail({ admissionId }: { admissionId: string }) {
   const query = useAdmission(admissionId)
 
-  if (query.isLoading) return <LoadingState label="Loading admission" />
+  if (query.isLoading) {
+    return <PageLoading title="Admission" label="Loading admission information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Admission"
         message={query.error instanceof ApiError ? query.error.message : 'Admission could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -38,7 +47,6 @@ function AdmissionDetail({ admissionId }: { admissionId: string }) {
   return (
     <Page
       title={admission.admissionNumber}
-      description="Admission details. Update, discharge, and cancel are not available to current roles."
       actions={
         <Button component={Link} to="/admissions">Back to admissions</Button>
       }
@@ -48,11 +56,11 @@ function AdmissionDetail({ admissionId }: { admissionId: string }) {
           <Detail label="Admission number" value={admission.admissionNumber} />
           <Detail label="Patient" value={patientLabel(admission.patient)} />
           <Detail label="Attending doctor" value={doctorLabel(admission.attendingDoctor)} />
-          <Detail label="Status" value={admission.status} />
-          <Detail label="Admitted at" value={new Date(admission.admittedAt).toLocaleString()} />
+          <Detail label="Status" value={<StatusChip value={admission.status} />} />
+          <Detail label="Admitted at" value={formatHospitalDateTime(admission.admittedAt)} />
           <Detail
             label="Discharged at"
-            value={admission.dischargedAt ? new Date(admission.dischargedAt).toLocaleString() : null}
+            value={admission.dischargedAt ? formatHospitalDateTime(admission.dischargedAt) : null}
           />
           <Detail label="Reason" value={admission.reason} />
           {admission.dischargeSummary ? (

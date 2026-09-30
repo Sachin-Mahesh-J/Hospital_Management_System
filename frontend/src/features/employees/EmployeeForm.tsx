@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { useDepartments } from '../departments/hooks'
 import {
   employmentStatuses,
@@ -97,6 +98,7 @@ export function EmployeeForm({
         {departments.isError && (
           <Alert severity="error">Active departments could not be loaded.</Alert>
         )}
+        <FormSection title="Personal information">
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
             defaultValue={employee?.firstName ?? ''}
@@ -190,6 +192,7 @@ export function EmployeeForm({
             </Select>
           </FormControl>
         )}
+        </FormSection>
         <Button disabled={isPending || departments.isLoading} type="submit" variant="contained">
           {isPending ? 'Saving…' : submitLabel}
         </Button>

@@ -80,7 +80,7 @@ export function LoginPage() {
               Sign in to HMS
             </Typography>
             <Typography color="text.secondary">
-              Use your hospital account to continue.
+              Use your hospital username to continue.
             </Typography>
           </Box>
           {error && <Alert severity="error">{error}</Alert>}

@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   FormControl,
   InputLabel,
@@ -14,6 +15,9 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import { ApiError } from '../../api/client'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -37,26 +41,28 @@ export function PatientReportPage() {
   return (
     <ReportPageFrame
       title="Patient report"
-      description="Administrative identifiers for registered patients. Contact details and clinical information are omitted."
+      description="Registered patients."
       onRefresh={() => void query.refetch()}
     >
-      <FormControl className="no-print" sx={{ maxWidth: 280 }}>
-        <InputLabel id="patient-report-status">Status</InputLabel>
-        <Select
-          label="Status"
-          labelId="patient-report-status"
-          onChange={(event) => {
-            setStatus(event.target.value)
-            setPage(1)
-          }}
-          value={status}
-        >
-          <MenuItem value="">All statuses</MenuItem>
-          {statuses.map((value) => (
-            <MenuItem key={value} value={value}>{value}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FilterBar>
+        <FormControl className="no-print" size="small" sx={filterControlSx}>
+          <InputLabel id="patient-report-status">Status</InputLabel>
+          <Select
+            label="Status"
+            labelId="patient-report-status"
+            onChange={(event) => {
+              setStatus(event.target.value)
+              setPage(1)
+            }}
+            value={status}
+          >
+            <MenuItem value="">All statuses</MenuItem>
+            {statuses.map((value) => (
+              <MenuItem key={value} value={value}>{value}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading patient report" />}
       {query.isError && (
         <ErrorState
@@ -91,8 +97,8 @@ export function PatientReportPage() {
                     <TableCell>{personLabel(row)}</TableCell>
                     <TableCell>{row.dateOfBirth ?? 'Unknown'}</TableCell>
                     <TableCell>{row.sexAtRegistration ?? 'Not recorded'}</TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{new Date(row.createdAt).toLocaleString()}</TableCell>
+                    <TableCell><StatusChip value={row.status} /></TableCell>
+                    <TableCell>{formatHospitalDateTime(row.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

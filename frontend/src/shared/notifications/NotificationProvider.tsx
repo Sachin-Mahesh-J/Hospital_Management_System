@@ -36,6 +36,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       >
         <Alert
           onClose={() => setNotification(null)}
+          role="status"
           severity={notification?.severity ?? 'info'}
           variant="filled"
         >

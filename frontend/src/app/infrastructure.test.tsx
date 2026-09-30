@@ -1,6 +1,7 @@
 import { Button } from '@mui/material'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { AuthContext, type AuthContextValue } from '../auth/authContext'
 import {
@@ -8,10 +9,12 @@ import {
   ErrorState,
   LoadingState,
 } from '../shared/components/StateViews'
+import { ContextHelp } from '../shared/components/ContextHelp'
 import {
   useNotification,
 } from '../shared/notifications/notificationContext'
 import { NotificationProvider } from '../shared/notifications/NotificationProvider'
+import { AppShell } from './AppShell'
 import { appRoutes } from './routes'
 
 const authenticatedUser = {
@@ -130,6 +133,23 @@ describe('application routing', () => {
     ).toBeVisible()
   })
 
+  it('blocks medicine catalogue routes when the required permission is absent', async () => {
+    const router = createMemoryRouter(appRoutes, {
+      initialEntries: ['/medicines'],
+    })
+    render(
+      <AuthContext value={{
+        ...authValue,
+        user: { ...authenticatedUser, permissions: [] },
+      }}>
+        <RouterProvider router={router} />
+      </AuthContext>,
+    )
+    expect(
+      await screen.findByText('You are not authorized to access this page.'),
+    ).toBeVisible()
+  })
+
   it('blocks pharmacy inventory and receiving routes when the required permission is absent', async () => {
     for (const path of ['/pharmacy/inventory', '/pharmacy/inventory/receive', '/pharmacy/movements']) {
       const router = createMemoryRouter(appRoutes, {
@@ -230,7 +250,7 @@ describe('shared application states', () => {
       <ErrorState message="Unable to load" onRetry={() => { retried = true }} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(retried).toBe(true)
 
     rerender(
@@ -259,5 +279,40 @@ describe('notifications', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Notify' }))
 
     expect(await screen.findByText('Saved successfully.')).toBeVisible()
+  })
+})
+
+describe('contextual help', () => {
+  it('does not place help controls on sidebar navigation', () => {
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <AuthContext value={authValue}>
+          <MemoryRouter>
+            <AppShell />
+          </MemoryRouter>
+        </AuthContext>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Patients' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /More information about/ })).not.toBeInTheDocument()
+  })
+
+  it('opens retained help from a subtle information control', () => {
+    render(
+      <ContextHelp
+        description="Voiding marks the invoice void with a reason; it does not delete line items."
+        label="invoice voiding"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'More information about invoice voiding' }))
+    expect(screen.getByRole('dialog', { name: 'More information about invoice voiding' })).toHaveTextContent(
+      'Voiding marks the invoice void with a reason; it does not delete line items.',
+    )
   })
 })

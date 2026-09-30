@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { useEmployees } from '../employees/hooks'
 import {
   doctorStatuses,
@@ -83,75 +84,83 @@ export function DoctorForm({
         {!doctor && employees.isError && (
           <Alert severity="error">Eligible employees could not be loaded.</Alert>
         )}
-        {doctor ? (
-          <TextField
-            disabled
-            label="Employee"
-            value={`${doctor.employee.employeeNumber} — ${doctor.employee.firstName} ${doctor.employee.lastName}`}
-          />
-        ) : (
-          <FormControl fullWidth required>
-            <InputLabel id="doctor-employee-label">Employee</InputLabel>
-            <Select
+        <FormSection title="Linked employee">
+          {doctor ? (
+            <TextField
+              disabled
               label="Employee"
-              labelId="doctor-employee-label"
-              onChange={(event) => setEmployeeId(event.target.value)}
-              value={employeeId}
-            >
-              {(employees.data?.data ?? []).map((employee) => (
-                <MenuItem key={employee.id} value={employee.id}>
-                  {employee.firstName} {employee.lastName} ({employee.employeeNumber})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField
-            defaultValue={doctor?.licenseNumber ?? ''}
-            fullWidth
-            slotProps={{ htmlInput: { maxLength: 100 } }}
-            label="License number"
-            name="licenseNumber"
-            required
-          />
-          <TextField
-            defaultValue={doctor?.specialization ?? ''}
-            fullWidth
-            slotProps={{ htmlInput: { maxLength: 150 } }}
-            label="Specialization"
-            name="specialization"
-            required
-          />
-        </Stack>
-        <TextField
-          defaultValue={doctor?.contactExtension ?? ''}
-          label="Contact extension"
-          name="contactExtension"
-          slotProps={{ htmlInput: { maxLength: 20 } }}
-        />
-        <TextField
-          defaultValue={doctor?.professionalSummary ?? ''}
-          label="Professional summary"
-          multiline
-          name="professionalSummary"
-          rows={3}
-          slotProps={{ htmlInput: { maxLength: 5000 } }}
-        />
+              value={`${doctor.employee.employeeNumber} — ${doctor.employee.firstName} ${doctor.employee.lastName}`}
+            />
+          ) : (
+            <FormControl fullWidth required>
+              <InputLabel id="doctor-employee-label">Employee</InputLabel>
+              <Select
+                label="Employee"
+                labelId="doctor-employee-label"
+                onChange={(event) => setEmployeeId(event.target.value)}
+                value={employeeId}
+              >
+                {(employees.data?.data ?? []).map((employee) => (
+                  <MenuItem key={employee.id} value={employee.id}>
+                    {employee.firstName} {employee.lastName} ({employee.employeeNumber})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </FormSection>
+        <FormSection title="Professional credentials">
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                defaultValue={doctor?.licenseNumber ?? ''}
+                fullWidth
+                slotProps={{ htmlInput: { maxLength: 100 } }}
+                label="License number"
+                name="licenseNumber"
+                required
+              />
+              <TextField
+                defaultValue={doctor?.specialization ?? ''}
+                fullWidth
+                slotProps={{ htmlInput: { maxLength: 150 } }}
+                label="Specialization"
+                name="specialization"
+                required
+              />
+            </Stack>
+            <TextField
+              defaultValue={doctor?.contactExtension ?? ''}
+              label="Contact extension"
+              name="contactExtension"
+              slotProps={{ htmlInput: { maxLength: 20 } }}
+            />
+            <TextField
+              defaultValue={doctor?.professionalSummary ?? ''}
+              label="Professional summary"
+              multiline
+              name="professionalSummary"
+              rows={3}
+              slotProps={{ htmlInput: { maxLength: 5000 } }}
+            />
+          </Stack>
+        </FormSection>
         {allowStatus && (
-          <FormControl sx={{ maxWidth: 320 }}>
-            <InputLabel id="doctor-status-label">Doctor status</InputLabel>
-            <Select
-              label="Doctor status"
-              labelId="doctor-status-label"
-              onChange={(event) => setStatus(event.target.value as DoctorStatus)}
-              value={status}
-            >
-              {doctorStatuses.map((value) => (
-                <MenuItem key={value} value={value}>{value}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <FormSection title="Status">
+            <FormControl sx={{ maxWidth: 320 }}>
+              <InputLabel id="doctor-status-label">Doctor status</InputLabel>
+              <Select
+                label="Doctor status"
+                labelId="doctor-status-label"
+                onChange={(event) => setStatus(event.target.value as DoctorStatus)}
+                value={status}
+              >
+                {doctorStatuses.map((value) => (
+                  <MenuItem key={value} value={value}>{value}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </FormSection>
         )}
         <Button disabled={isPending || (!doctor && employees.isLoading)} type="submit" variant="contained">
           {isPending ? 'Saving…' : submitLabel}

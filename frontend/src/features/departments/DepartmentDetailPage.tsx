@@ -1,16 +1,21 @@
 import { Button, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useDepartment } from './hooks'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -19,10 +24,13 @@ export function DepartmentDetailPage() {
   const { departmentId = '' } = useParams()
   const query = useDepartment(departmentId)
 
-  if (query.isLoading) return <LoadingState label="Loading department" />
+  if (query.isLoading) {
+    return <PageLoading title="Department" label="Loading department information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Department"
         message={query.error instanceof ApiError ? query.error.message : 'Department could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -48,7 +56,7 @@ export function DepartmentDetailPage() {
     >
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2.5}>
-          <Detail label="Status" value={department.status} />
+          <Detail label="Status" value={<StatusChip value={department.status} />} />
           <Detail label="Description" value={department.description} />
         </Stack>
       </Paper>

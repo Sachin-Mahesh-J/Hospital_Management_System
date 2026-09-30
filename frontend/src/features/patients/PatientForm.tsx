@@ -2,6 +2,7 @@ import {
   Alert,
   Button,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Paper,
@@ -11,6 +12,8 @@ import {
 } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
+import { hospitalToday } from '../../shared/datetime/hospitalTime'
 import {
   dobPrecisions,
   patientSexValues,
@@ -74,10 +77,7 @@ export function PatientForm({
     setError(null)
     const form = new FormData(event.currentTarget)
     const dateOfBirth = normalizedDob(dateValue, precision)
-    if (
-      dateOfBirth &&
-      new Date(`${dateOfBirth}T00:00:00.000Z`) > new Date()
-    ) {
+    if (dateOfBirth && dateOfBirth > hospitalToday()) {
       setError('Date of birth cannot be in the future.')
       return
     }
@@ -108,115 +108,128 @@ export function PatientForm({
 
   const dateType =
     precision === 'year' ? 'number' : precision === 'month' ? 'month' : 'date'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = hospitalToday()
 
   return (
     <Paper sx={{ p: { xs: 2, md: 3 } }}>
       <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
         {error && <Alert severity="error">{error}</Alert>}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField
-            defaultValue={patient?.firstName ?? ''}
-            fullWidth
-            slotProps={{ htmlInput: { maxLength: 100 } }}
-            label="First name"
-            name="firstName"
-            required
-          />
-          <TextField
-            defaultValue={patient?.lastName ?? ''}
-            fullWidth
-            slotProps={{ htmlInput: { maxLength: 100 } }}
-            label="Last name"
-            name="lastName"
-            required
-          />
-        </Stack>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <FormControl fullWidth>
-            <InputLabel id="dob-precision-label">Date precision</InputLabel>
-            <Select
-              label="Date precision"
-              labelId="dob-precision-label"
-              onChange={(event) => {
-                const next = event.target.value as DobPrecision
-                setPrecision(next)
-                setDateValue('')
-              }}
-              value={precision}
-            >
-              {dobPrecisions.map((value) => (
-                <MenuItem key={value} value={value}>
-                  {value.replace('_', ' ')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {precision !== 'unknown' && (
+        <FormSection title="Personal information">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
+              defaultValue={patient?.firstName ?? ''}
               fullWidth
-              slotProps={{
-                htmlInput: {
-                  ...(dateType === 'date' ? { max: today } : {}),
-                  ...(dateType === 'month' ? { max: today.slice(0, 7) } : {}),
-                  ...(dateType === 'number'
-                    ? { min: 1800, max: Number(today.slice(0, 4)) }
-                    : {}),
-                },
-              }}
-              label={
-                precision === 'year'
-                  ? 'Birth year'
-                  : precision === 'month'
-                    ? 'Birth month'
-                    : 'Date of birth'
-              }
-              onChange={(event) => setDateValue(event.target.value)}
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+              label="First name"
+              name="firstName"
               required
-              type={dateType}
-              value={dateValue}
             />
-          )}
-          <FormControl fullWidth>
-            <InputLabel id="sex-label">Sex at registration</InputLabel>
-            <Select
-              defaultValue={patient?.sexAtRegistration ?? ''}
-              label="Sex at registration"
-              labelId="sex-label"
-              name="sexAtRegistration"
-            >
-              <MenuItem value="">Not recorded</MenuItem>
-              {patientSexValues.map((value) => (
-                <MenuItem key={value} value={value}>
-                  {value.replace('_', ' ')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField defaultValue={patient?.phone ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 30 } }} label="Phone" name="phone" />
-          <TextField defaultValue={patient?.email ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 254 } }} label="Email" name="email" type="email" />
-        </Stack>
-        <TextField defaultValue={patient?.addressText ?? ''} slotProps={{ htmlInput: { maxLength: 2000 } }} label="Address" multiline name="addressText" rows={3} />
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField defaultValue={patient?.emergencyContactName ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 200 } }} label="Emergency contact name" name="emergencyContactName" />
-          <TextField defaultValue={patient?.emergencyContactPhone ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 30 } }} label="Emergency contact phone" name="emergencyContactPhone" />
-        </Stack>
+            <TextField
+              defaultValue={patient?.lastName ?? ''}
+              fullWidth
+              slotProps={{ htmlInput: { maxLength: 100 } }}
+              label="Last name"
+              name="lastName"
+              required
+            />
+          </Stack>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel id="dob-precision-label">Date precision</InputLabel>
+              <Select
+                label="Date precision"
+                labelId="dob-precision-label"
+                onChange={(event) => {
+                  const next = event.target.value as DobPrecision
+                  setPrecision(next)
+                  setDateValue('')
+                }}
+                value={precision}
+              >
+                {dobPrecisions.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value.replace('_', ' ')}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {precision !== 'unknown' && (
+              <TextField
+                fullWidth
+                slotProps={{
+                  htmlInput: {
+                    ...(dateType === 'date' ? { max: today } : {}),
+                    ...(dateType === 'month' ? { max: today.slice(0, 7) } : {}),
+                    ...(dateType === 'number'
+                      ? { min: 1800, max: Number(today.slice(0, 4)) }
+                      : {}),
+                  },
+                }}
+                label={
+                  precision === 'year'
+                    ? 'Birth year'
+                    : precision === 'month'
+                      ? 'Birth month'
+                      : 'Date of birth'
+                }
+                onChange={(event) => setDateValue(event.target.value)}
+                required
+                type={dateType}
+                value={dateValue}
+              />
+            )}
+            <FormControl fullWidth>
+              <InputLabel id="sex-label">Sex at registration</InputLabel>
+              <Select
+                defaultValue={patient?.sexAtRegistration ?? ''}
+                label="Sex at registration"
+                labelId="sex-label"
+                name="sexAtRegistration"
+              >
+                <MenuItem value="">Not recorded</MenuItem>
+                {patientSexValues.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value.replace('_', ' ')}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </FormSection>
+        <FormSection title="Contact information">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField defaultValue={patient?.phone ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 30 } }} label="Phone" name="phone" />
+            <TextField defaultValue={patient?.email ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 254 } }} label="Email" name="email" type="email" />
+          </Stack>
+        </FormSection>
+        <FormSection title="Address">
+          <TextField defaultValue={patient?.addressText ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 2000 } }} label="Address" multiline name="addressText" rows={3} />
+        </FormSection>
+        <FormSection title="Emergency contact">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField defaultValue={patient?.emergencyContactName ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 200 } }} label="Emergency contact name" name="emergencyContactName" />
+            <TextField defaultValue={patient?.emergencyContactPhone ?? ''} fullWidth slotProps={{ htmlInput: { maxLength: 30 } }} label="Emergency contact phone" name="emergencyContactPhone" />
+          </Stack>
+        </FormSection>
         {allowStatus && (
-          <FormControl sx={{ maxWidth: 320 }}>
-            <InputLabel id="status-label">Patient status</InputLabel>
-            <Select
-              label="Patient status"
-              labelId="status-label"
-              onChange={(event) => setStatus(event.target.value as PatientStatus)}
-              value={status}
-            >
-              {patientStatuses.map((value) => (
-                <MenuItem key={value} value={value}>{value}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <FormSection title="Status">
+            <FormControl sx={{ maxWidth: 320 }}>
+              <InputLabel id="status-label">Patient status</InputLabel>
+              <Select
+                label="Patient status"
+                labelId="status-label"
+                onChange={(event) => setStatus(event.target.value as PatientStatus)}
+                value={status}
+              >
+                {patientStatuses.map((value) => (
+                  <MenuItem key={value} value={value}>{value}</MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Inactive and deceased patients remain in history. They are not deleted.
+              </FormHelperText>
+            </FormControl>
+          </FormSection>
         )}
         <Button disabled={isPending} type="submit" variant="contained">
           {isPending ? 'Saving…' : submitLabel}

@@ -1,42 +1,67 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  addDays,
-  appointmentOverlapsLocalDay,
+  appointmentOverlapsHospitalDay,
+  calendarDays,
   calendarRange,
   durationMinutes,
-  minutesFromDayStart,
-  startOfLocalDay,
-  startOfWeek,
-  toLocalDateTimeValue,
+  hospitalSlotDateTimeValue,
+  minutesFromHospitalDayStart,
+  shiftCalendarAnchor,
 } from './calendarRange'
+import { hospitalToday, isHospitalToday } from '../../shared/datetime/hospitalTime'
 
 describe('calendarRange', () => {
-  it('maps day, week, and month windows from the local anchor', () => {
-    const wednesday = new Date(2026, 8, 30, 15, 0, 0)
-    const day = calendarRange(wednesday, 'day')
-    expect(day.from).toEqual(startOfLocalDay(wednesday))
-    expect(day.to).toEqual(addDays(startOfLocalDay(wednesday), 1))
-
-    const week = calendarRange(wednesday, 'week')
-    expect(week.from).toEqual(startOfWeek(wednesday))
-    expect(week.to).toEqual(addDays(startOfWeek(wednesday), 7))
-
-    const month = calendarRange(new Date(2026, 8, 1), 'month')
-    expect(month.from.getDay()).toBe(1)
-    expect((month.to.getTime() - month.from.getTime()) / 86_400_000).toBe(42)
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it('places appointments using actual start and end instants', () => {
-    const day = new Date(2026, 5, 1)
+  it('opens day, week, and month windows around hospital-local today', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-29T20:00:00.000Z'))
+    const today = hospitalToday()
+    expect(today).toBe('2026-09-30')
+
+    const day = calendarRange(today, 'day')
+    expect(day.days).toEqual(['2026-09-30'])
+    expect(day.from.toISOString()).toBe('2026-09-29T18:30:00.000Z')
+    expect(day.to.toISOString()).toBe('2026-09-30T18:30:00.000Z')
+
+    const week = calendarRange(today, 'week')
+    expect(week.days[0]).toBe('2026-09-28')
+    expect(week.days).toContain('2026-09-30')
+    expect(week.days).toHaveLength(7)
+
+    const month = calendarRange(today, 'month')
+    expect(month.days).toHaveLength(42)
+    expect(month.days).toContain('2026-09-30')
+    expect(calendarDays(today, 'month')[0]).toBe('2026-08-31')
+  })
+
+  it('keeps today identified after navigating to another date', () => {
+    const now = new Date('2026-09-30T04:30:00.000Z')
+    const viewed = shiftCalendarAnchor('2026-09-30', 'month', 1)
+    expect(viewed).toBe('2026-10-01')
+    expect(isHospitalToday(viewed, now)).toBe(false)
+    expect(isHospitalToday('2026-09-30', now)).toBe(true)
+  })
+
+  it('places appointments using hospital-local day boundaries', () => {
     expect(
-      appointmentOverlapsLocalDay(
-        '2026-06-01T10:00:00.000Z',
-        '2026-06-01T10:20:00.000Z',
-        day,
+      appointmentOverlapsHospitalDay(
+        '2026-09-30T04:30:00.000Z',
+        '2026-09-30T05:00:00.000Z',
+        '2026-09-30',
       ),
     ).toBe(true)
-    expect(durationMinutes('2026-06-01T10:00:00.000Z', '2026-06-01T10:20:00.000Z')).toBe(20)
-    expect(minutesFromDayStart(new Date(2026, 5, 1, 8, 30).toISOString(), day)).toBe(8 * 60 + 30)
-    expect(toLocalDateTimeValue(new Date(2026, 5, 1, 9, 0))).toBe('2026-06-01T09:00')
+    expect(
+      appointmentOverlapsHospitalDay(
+        '2026-09-29T18:00:00.000Z',
+        '2026-09-29T18:20:00.000Z',
+        '2026-09-30',
+      ),
+    ).toBe(false)
+    expect(durationMinutes('2026-09-30T04:30:00.000Z', '2026-09-30T04:50:00.000Z')).toBe(20)
+    expect(minutesFromHospitalDayStart('2026-09-30T03:00:00.000Z', '2026-09-30')).toBe(8 * 60 + 30)
+    expect(hospitalSlotDateTimeValue('2026-09-30', 9)).toBe('2026-09-30T09:00')
   })
 })

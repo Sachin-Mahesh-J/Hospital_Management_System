@@ -40,6 +40,10 @@ import { LaboratoryCreatePage } from '../features/laboratory/LaboratoryCreatePag
 import { LaboratoryDetailPage } from '../features/laboratory/LaboratoryDetailPage'
 import { LaboratoryListPage } from '../features/laboratory/LaboratoryListPage'
 import { LaboratoryReportPage } from '../features/laboratory/LaboratoryReportPage'
+import { MedicineCreatePage } from '../features/medicines/MedicineCreatePage'
+import { MedicineDetailPage } from '../features/medicines/MedicineDetailPage'
+import { MedicineEditPage } from '../features/medicines/MedicineEditPage'
+import { MedicineListPage } from '../features/medicines/MedicineListPage'
 import { InventoryListPage } from '../features/pharmacy/InventoryListPage'
 import { StockAdjustPage } from '../features/pharmacy/StockAdjustPage'
 import { StockMovementListPage } from '../features/pharmacy/StockMovementListPage'
@@ -285,6 +289,30 @@ export const appRoutes: RouteObject[] = [
                     element: <PermissionRoute permission="lab_request.create" />,
                     children: [
                       { path: 'new', element: <LaboratoryCreatePage /> },
+                    ],
+                  },
+                ],
+              },
+              {
+                path: 'medicines',
+                children: [
+                  {
+                    element: <PermissionRoute permission="medicine.read" />,
+                    children: [
+                      { index: true, element: <MedicineListPage /> },
+                      { path: ':medicineId', element: <MedicineDetailPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="medicine.create" />,
+                    children: [
+                      { path: 'new', element: <MedicineCreatePage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="medicine.update" />,
+                    children: [
+                      { path: ':medicineId/edit', element: <MedicineEditPage /> },
                     ],
                   },
                 ],

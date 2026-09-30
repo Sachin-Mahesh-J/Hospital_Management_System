@@ -99,7 +99,7 @@ describe('AttendanceListPage', () => {
     vi.mocked(attendanceApi.fetchAttendance).mockRejectedValue(new Error('failed'))
     renderPage()
     expect(await screen.findByText('Attendance could not be loaded.')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(attendanceApi.fetchAttendance).toHaveBeenCalledTimes(2))
   })
 })

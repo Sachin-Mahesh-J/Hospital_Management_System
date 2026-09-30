@@ -13,6 +13,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { Page } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { usePatients } from '../patients/hooks'
@@ -77,75 +78,83 @@ export function LaboratoryCreatePage() {
       actions={<Button component={Link} to="/laboratory">Cancel</Button>}
     >
       <Paper sx={{ p: 3 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)}>
+        <Stack component="form" spacing={3} onSubmit={(event) => void handleSubmit(event)}>
           {error && <Alert severity="error">{error}</Alert>}
-          <FormControl>
-            <InputLabel id="lab-patient-select">Patient</InputLabel>
-            <Select
-              label="Patient"
-              labelId="lab-patient-select"
-              onChange={(event) => setPatientId(event.target.value)}
-              value={patientId}
-            >
-              {(patients.data?.data ?? []).map((patient) => (
-                <MenuItem key={patient.id} value={patient.id}>
-                  {labPatientLabel(patient)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            helperText="Optional. When supplied, the medical record must belong to the selected patient."
-            label="Medical record ID"
-            name="medicalRecordId"
-          />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <FormControl sx={{ flex: 1 }}>
-              <InputLabel id="lab-test-select">Laboratory test</InputLabel>
-              <Select
-                label="Laboratory test"
-                labelId="lab-test-select"
-                onChange={(event) => setPendingTestId(event.target.value)}
-                value={pendingTestId}
-              >
-                {(tests.data?.data ?? []).map((test) => (
-                  <MenuItem key={test.id} value={test.id}>
-                    {labTestLabel(test)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button onClick={handleAddTest} type="button" variant="outlined">
-              Add test
-            </Button>
-          </Stack>
-          {selectedTestIds.length === 0 ? (
-            <Typography color="text.secondary">No tests added yet.</Typography>
-          ) : (
-            selectedTestIds.map((testId, index) => {
-              const test = (tests.data?.data ?? []).find((item) => item.id === testId)
-              return (
-                <Stack
-                  direction="row"
-                  key={`${testId}-${index}`}
-                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+          <FormSection title="Patient and context">
+            <Stack spacing={2}>
+              <FormControl fullWidth>
+                <InputLabel id="lab-patient-select">Patient</InputLabel>
+                <Select
+                  label="Patient"
+                  labelId="lab-patient-select"
+                  onChange={(event) => setPatientId(event.target.value)}
+                  value={patientId}
                 >
-                  <Typography>
-                    {index + 1}. {test ? labTestLabel(test) : testId}
-                  </Typography>
-                  <Button onClick={() => handleRemoveTest(index)} size="small" type="button">
-                    Remove
-                  </Button>
-                </Stack>
-              )
-            })
-          )}
-          <TextField
-            helperText="Optional. Stored at creation and then immutable."
-            label="Clinical note"
-            multiline
-            name="clinicalNote"
-          />
+                  {(patients.data?.data ?? []).map((patient) => (
+                    <MenuItem key={patient.id} value={patient.id}>
+                      {labPatientLabel(patient)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                helperText="Optional. When supplied, the medical record must belong to the selected patient."
+                label="Medical record ID"
+                name="medicalRecordId"
+              />
+              <TextField
+                helperText="Optional. Stored at creation and then immutable."
+                label="Clinical note"
+                multiline
+                name="clinicalNote"
+              />
+            </Stack>
+          </FormSection>
+          <FormSection title="Requested tests">
+            <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <FormControl fullWidth sx={{ flex: 1 }}>
+                  <InputLabel id="lab-test-select">Laboratory test</InputLabel>
+                  <Select
+                    label="Laboratory test"
+                    labelId="lab-test-select"
+                    onChange={(event) => setPendingTestId(event.target.value)}
+                    value={pendingTestId}
+                  >
+                    {(tests.data?.data ?? []).map((test) => (
+                      <MenuItem key={test.id} value={test.id}>
+                        {labTestLabel(test)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button onClick={handleAddTest} type="button" variant="outlined">
+                  Add test
+                </Button>
+              </Stack>
+              {selectedTestIds.length === 0 ? (
+                <Typography color="text.secondary">No tests added yet.</Typography>
+              ) : (
+                selectedTestIds.map((testId, index) => {
+                  const test = (tests.data?.data ?? []).find((item) => item.id === testId)
+                  return (
+                    <Stack
+                      direction="row"
+                      key={`${testId}-${index}`}
+                      sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                    >
+                      <Typography>
+                        {index + 1}. {test ? labTestLabel(test) : testId}
+                      </Typography>
+                      <Button onClick={() => handleRemoveTest(index)} size="small" type="button">
+                        Remove
+                      </Button>
+                    </Stack>
+                  )
+                })
+              )}
+            </Stack>
+          </FormSection>
           <Button disabled={mutation.isPending} type="submit" variant="contained">
             {mutation.isPending ? 'Creating…' : 'Create request'}
           </Button>

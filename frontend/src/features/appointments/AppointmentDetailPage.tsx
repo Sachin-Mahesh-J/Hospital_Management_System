@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -11,12 +12,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
+import { formatStatusLabel } from '../../shared/components/formatStatusLabel'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { AppointmentForm } from './AppointmentForm'
 import {
@@ -34,11 +36,15 @@ import {
   type AppointmentRescheduleInput,
 } from './types'
 
-function Detail({ label, value }: { label: string; value: string | null }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Stack spacing={0.5}>
       <Typography color="text.secondary" variant="body2">{label}</Typography>
-      <Typography>{value || 'Not recorded'}</Typography>
+      {typeof value === 'string' || value == null ? (
+        <Typography>{value || 'Not recorded'}</Typography>
+      ) : (
+        value
+      )}
     </Stack>
   )
 }
@@ -60,10 +66,13 @@ function AppointmentDetail({ appointmentId }: { appointmentId: string }) {
   const [statusError, setStatusError] = useState<string | null>(null)
   const [showReschedule, setShowReschedule] = useState(false)
 
-  if (query.isLoading) return <LoadingState label="Loading appointment" />
+  if (query.isLoading) {
+    return <PageLoading title="Appointment details" label="Loading appointment information..." />
+  }
   if (query.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Appointment details"
         message={query.error instanceof ApiError ? query.error.message : 'Appointment could not be loaded.'}
         onRetry={() => void query.refetch()}
       />
@@ -97,8 +106,10 @@ function AppointmentDetail({ appointmentId }: { appointmentId: string }) {
 
   return (
     <Page
+      help="Cancellation keeps history with a required reason. Rescheduling cancels the original and creates a linked replacement appointment for the same patient."
+      helpLabel="Cancelling and rescheduling appointments"
       title={`${patientLabel(appointment.patient)} with ${doctorLabel(appointment.doctor)}`}
-      description={appointment.status}
+      description={formatStatusLabel(appointment.status)}
       actions={
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
           <Button component={Link} to="/appointments">Back to appointments</Button>
@@ -114,9 +125,9 @@ function AppointmentDetail({ appointmentId }: { appointmentId: string }) {
         <Stack spacing={2.5}>
           <Typography component="h2" variant="h6">Appointment</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Detail label="Status" value={appointment.status} />
-            <Detail label="Start" value={new Date(appointment.startsAt).toLocaleString()} />
-            <Detail label="End" value={new Date(appointment.endsAt).toLocaleString()} />
+            <Detail label="Status" value={<StatusChip value={appointment.status} />} />
+            <Detail label="Start" value={formatHospitalDateTime(appointment.startsAt)} />
+            <Detail label="End" value={formatHospitalDateTime(appointment.endsAt)} />
           </Stack>
           <Divider />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
@@ -135,7 +146,7 @@ function AppointmentDetail({ appointmentId }: { appointmentId: string }) {
             <Detail label="Reason" value={appointment.cancellationReason} />
             <Detail
               label="Cancelled at"
-              value={appointment.cancelledAt ? new Date(appointment.cancelledAt).toLocaleString() : null}
+              value={appointment.cancelledAt ? formatHospitalDateTime(appointment.cancelledAt) : null}
             />
             <Detail label="Cancelled by" value={appointment.cancelledBy?.username ?? null} />
           </Stack>
@@ -195,20 +206,27 @@ function AppointmentDetail({ appointmentId }: { appointmentId: string }) {
               }}
               variant="outlined"
             >
-              Mark {status.replace('_', ' ')}
+              Mark {formatStatusLabel(status)}
             </Button>
           ))}
         </Can>
         <Can permission="appointment.cancel">
           {canCancelAppointment(appointment.status) && (
-            <Button color="warning" onClick={() => { setCancelOpen(true); setCancelError(null) }}>
+            <Button
+              color="error"
+              onClick={() => { setCancelOpen(true); setCancelError(null) }}
+              variant="outlined"
+            >
               Cancel appointment
             </Button>
           )}
         </Can>
         <Can permission="appointment.reschedule">
           {canRescheduleAppointment(appointment.status) && (
-            <Button onClick={() => setShowReschedule((value) => !value)} variant="outlined">
+            <Button
+              onClick={() => setShowReschedule((value) => !value)}
+              variant={showReschedule ? 'text' : 'contained'}
+            >
               {showReschedule ? 'Hide replacement form' : 'Reschedule'}
             </Button>
           )}

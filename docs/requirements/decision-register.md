@@ -177,7 +177,8 @@ predecessor content, requires the same patient and a later `occurred_at`, and
 allows chains. Care context remains optional (C1). Prescriptions require a final
 medical record, at least one item, canonical medicine units, and start as `active`.
 The only prescription transition in this milestone is `active` → `cancelled`.
-Medicine catalog access is read-only for active medicines.
+Medicine catalog access was read-only for active medicines in this milestone.
+D-036 later grants Administrator catalogue write and `medicine.read`.
 
 ### D-023 — Laboratory management authorization and workflow
 
@@ -314,7 +315,9 @@ Permissions:
 | `prescription.dispense` | no | no | no | no | no | yes | no |
 | `prescription.reverse` | yes | no | no | no | no | yes | no |
 
-The medicine catalog remains application-read-only. Available stock is derived
+The medicine catalog remained application-read-only in this milestone. D-036
+later adds Administrator catalogue write and grants Administrator
+`medicine.read`. Existing pharmacy stock permissions are unchanged. Available stock is derived
 from append-only stock movements. Duplicate `(medicine_id, batch_number)`
 receiving is rejected under the existing unique constraint. Adjustments require
 a reason and cannot reduce available stock below zero. Expiry is batch-level and
@@ -863,6 +866,43 @@ None configured.
 
 Specification-compatible options are 1–3. HA and RPO/RTO remain unspecified numbers
 until chosen. Application audit-trail writes do not satisfy database backup.
+
+### D-036 — Medicine catalogue management policy
+
+```text
+APPROVED
+```
+
+D-036 is the medicine master-catalogue policy. It extends D-022/D-024 without
+replacing pharmacy stock, dispensing, or billing snapshots.
+
+A medicine is a catalogue definition, not a physical stock batch. The existing
+`medicines` row and `status` field are reused. No schema change is required.
+The server generates the medicine id. Historical prescriptions, batches,
+movements, dispensing records, invoices, and pharmacy charge snapshots are not
+rewritten when the catalogue is edited or deactivated.
+
+Permissions added:
+
+| Permission | Administrator | Doctor | Nurse | Receptionist | Laboratory Staff | Pharmacist | Accountant |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `medicine.read` | yes | yes | no | no | no | yes | no |
+| `medicine.create` | yes | no | no | no | no | no | no |
+| `medicine.update` | yes | no | no | no | no | no | no |
+| `medicine.deactivate` | yes | no | no | no | no | no | no |
+| `medicine.reactivate` | yes | no | no | no | no | no | no |
+
+D-024 pharmacy permissions remain unchanged:
+`inventory.read`, `stock.receive`, `stock.adjust`, `stock.movement.read`,
+`prescription.read`, `prescription.dispense`, and `prescription.reverse`.
+
+Doctor receives `medicine.read` so active medicines can be selected when
+creating prescriptions. New prescriptions, stock receiving, and new dispensing
+accept only `active` medicines. Inactive medicines remain visible in historical
+records. Medicines are deactivated, never hard-deleted. The existing `status`
+field supports reactivation.
+
+Full context: `docs/development/medicine-catalogue.md`.
 
 ## Ambiguities that do not block the architecture baseline
 

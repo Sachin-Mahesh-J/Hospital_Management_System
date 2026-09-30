@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Alert,
   Button,
@@ -16,6 +17,7 @@ import {
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../../api/client'
+import { FormSection } from '../../shared/components/FormSection'
 import { Page } from '../../shared/components/Page'
 import {
   EmptyState,
@@ -98,12 +100,12 @@ export function InvoiceCreatePage() {
   return (
     <Page
       title="Create invoice"
-      description="Select a patient and eligible billable sources. Laboratory and pharmacy prices are server-derived. Consultation unit price is entered here and validated by the server."
+      description="Select a patient and eligible billable sources. Enter the consultation unit price."
       actions={<Button component={Link} to="/billing">Cancel</Button>}
     >
       <Paper sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <Typography variant="h6">Patient</Typography>
+        <FormSection title="Patient">
+          <Stack spacing={2}>
           <Stack component="form" direction={{ xs: 'column', sm: 'row' }} spacing={1} onSubmit={submitSearch}>
             <TextField
               fullWidth
@@ -158,7 +160,8 @@ export function InvoiceCreatePage() {
             </TableContainer>
           )}
           {patient && <Alert severity="info">Selected patient: {patientLabel(patient)}</Alert>}
-        </Stack>
+          </Stack>
+        </FormSection>
       </Paper>
 
       {patient && sourcesQuery.isLoading && <LoadingState label="Loading billable sources" />}
@@ -171,7 +174,7 @@ export function InvoiceCreatePage() {
       {patient && sourcesQuery.data && (
         <Stack spacing={2}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Consultations</Typography>
+            <FormSection title="Consultations">
             {sourcesQuery.data.consultations.length === 0 && (
               <EmptyState title="No completed appointments" description="Only completed appointments can be billed." />
             )}
@@ -189,7 +192,7 @@ export function InvoiceCreatePage() {
                     }}
                   />
                   <Typography>
-                    {new Date(source.startsAt).toLocaleString()} — {source.doctorDisplayName}
+                    {formatHospitalDateTime(source.startsAt)} — {source.doctorDisplayName}
                     {source.billed ? ` (already on ${source.billedInvoiceNumber})` : ''}
                   </Typography>
                 </Stack>
@@ -206,9 +209,10 @@ export function InvoiceCreatePage() {
                 />
               </Stack>
             ))}
+            </FormSection>
           </Paper>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Laboratory</Typography>
+            <FormSection title="Laboratory">
             {sourcesQuery.data.laboratoryItems.length === 0 && (
               <EmptyState title="No billable laboratory items" description="Completed tests with a catalog price can be billed once." />
             )}
@@ -231,9 +235,10 @@ export function InvoiceCreatePage() {
                 </Typography>
               </Stack>
             ))}
+            </FormSection>
           </Paper>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Pharmacy</Typography>
+            <FormSection title="Pharmacy">
             {sourcesQuery.data.dispenses.length === 0 && (
               <EmptyState title="No billable dispenses" description="Unreversed completed dispenses can be billed once." />
             )}
@@ -256,6 +261,7 @@ export function InvoiceCreatePage() {
                 </Typography>
               </Stack>
             ))}
+            </FormSection>
           </Paper>
         </Stack>
       )}

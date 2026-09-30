@@ -1,8 +1,7 @@
 import { Button } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { Page } from '../../shared/components/Page'
-import { ErrorState, LoadingState } from '../../shared/components/StateViews'
+import { Page, PageError, PageLoading } from '../../shared/components/Page'
 import { useNotification } from '../../shared/notifications/notificationContext'
 import { DepartmentForm } from './DepartmentForm'
 import { useDepartment, useUpdateDepartment } from './hooks'
@@ -15,10 +14,13 @@ export function DepartmentEditPage() {
   const navigate = useNavigate()
   const { notify } = useNotification()
 
-  if (departmentQuery.isLoading) return <LoadingState label="Loading department" />
+  if (departmentQuery.isLoading) {
+    return <PageLoading title="Edit department" label="Loading department information..." />
+  }
   if (departmentQuery.isError) {
     return (
-      <ErrorState
+      <PageError
+        title="Edit department"
         message={departmentQuery.error instanceof ApiError ? departmentQuery.error.message : 'Department could not be loaded.'}
         onRetry={() => void departmentQuery.refetch()}
       />

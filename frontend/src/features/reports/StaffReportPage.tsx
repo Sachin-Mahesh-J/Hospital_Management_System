@@ -14,11 +14,14 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import { ApiError } from '../../api/client'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../../shared/components/StateViews'
+import { StatusChip } from '../../shared/components/StatusChip'
 import { ReportPageFrame } from './ReportPageFrame'
 import { useStaffReport } from './hooks'
 import { personLabel } from './types'
@@ -37,26 +40,28 @@ export function StaffReportPage() {
   return (
     <ReportPageFrame
       title="Staff report"
-      description="Employees, departments, and doctor master data. Attendance and leave are not included. Contact details and credentials are omitted."
+      description="Employees, departments, and doctors."
       onRefresh={() => void query.refetch()}
     >
-      <FormControl className="no-print" sx={{ maxWidth: 280 }}>
-        <InputLabel id="staff-status">Employment status</InputLabel>
-        <Select
-          label="Employment status"
-          labelId="staff-status"
-          onChange={(event) => {
-            setEmploymentStatus(event.target.value)
-            setPage(1)
-          }}
-          value={employmentStatus}
-        >
-          <MenuItem value="">All statuses</MenuItem>
-          {statuses.map((value) => (
-            <MenuItem key={value} value={value}>{value}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <FilterBar>
+        <FormControl className="no-print" size="small" sx={filterControlSx}>
+          <InputLabel id="staff-status">Employment status</InputLabel>
+          <Select
+            label="Employment status"
+            labelId="staff-status"
+            onChange={(event) => {
+              setEmploymentStatus(event.target.value)
+              setPage(1)
+            }}
+            value={employmentStatus}
+          >
+            <MenuItem value="">All statuses</MenuItem>
+            {statuses.map((value) => (
+              <MenuItem key={value} value={value}>{value}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </FilterBar>
       {query.isLoading && <LoadingState label="Loading staff report" />}
       {query.isError && (
         <ErrorState
@@ -91,7 +96,7 @@ export function StaffReportPage() {
                     <TableCell>{personLabel(row)}</TableCell>
                     <TableCell>{row.jobTitle}</TableCell>
                     <TableCell>{row.department.name}</TableCell>
-                    <TableCell>{row.employmentStatus}</TableCell>
+                    <TableCell><StatusChip value={row.employmentStatus} /></TableCell>
                     <TableCell>
                       {row.doctorProfile
                         ? `${row.doctorProfile.specialization} (${row.doctorProfile.licenseNumber})`

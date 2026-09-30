@@ -8,8 +8,12 @@ export type MedicineCatalogDto = {
   dosageForm: string
   strength: string | null
   inventoryUnit: string
-  status: string
+  defaultSalePrice: string
   currency: string
+  lowStockThreshold: string
+  status: string
+  createdAt: string
+  updatedAt: string
 }
 
 export function toMedicineCatalogDto(medicine: Medicine): MedicineCatalogDto {
@@ -21,7 +25,11 @@ export function toMedicineCatalogDto(medicine: Medicine): MedicineCatalogDto {
     dosageForm: medicine.dosageForm,
     strength: medicine.strength,
     inventoryUnit: medicine.inventoryUnit,
-    status: medicine.status,
+    defaultSalePrice: medicine.defaultSalePrice.toString(),
     currency: medicine.currency,
+    lowStockThreshold: medicine.lowStockThreshold.toString(),
+    status: medicine.status,
+    createdAt: medicine.createdAt.toISOString(),
+    updatedAt: medicine.updatedAt.toISOString(),
   }
 }

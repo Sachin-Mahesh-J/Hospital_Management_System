@@ -377,8 +377,8 @@ describe('laboratory report', () => {
         </AuthContext>
       </QueryClientProvider>,
     )
-    expect(await screen.findByRole('heading', { name: 'Laboratory report' })).toBeVisible()
-    expect(screen.getByText('negative')).toBeVisible()
+    expect(await screen.findByText('negative')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Laboratory report' })).toBeVisible()
     expect(screen.queryByText(/abnormal/i)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Print report' }))
     expect(print).toHaveBeenCalled()

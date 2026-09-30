@@ -39,6 +39,7 @@ function medicineQuery(filters: MedicineFilters): string {
     pageSize: String(filters.pageSize),
   })
   if (filters.search) params.set('search', filters.search)
+  if (filters.status) params.set('status', filters.status)
   return params.toString()
 }
 

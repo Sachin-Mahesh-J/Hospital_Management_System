@@ -142,6 +142,7 @@ export type MedicineFilters = {
   page: number
   pageSize: number
   search?: string
+  status?: 'active' | 'inactive'
 }
 
 export type MedicineListResult = {

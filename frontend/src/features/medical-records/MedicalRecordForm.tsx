@@ -9,7 +9,7 @@ import {
 } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
-import { localDateTimeToOffsetIso } from '../doctor-schedules/types'
+import { instantToHospitalInput, hospitalDateTimeToOffsetIso } from '../../shared/datetime/hospitalTime'
 import { usePatients } from '../patients/hooks'
 import type {
   MedicalRecord,
@@ -95,7 +95,7 @@ export function MedicalRecordForm({
       }
       try {
         await onSubmit({
-          occurredAt: localDateTimeToOffsetIso(occurredLocal),
+          occurredAt: hospitalDateTimeToOffsetIso(occurredLocal),
           appointmentId,
           admissionId,
           diagnoses,
@@ -116,7 +116,7 @@ export function MedicalRecordForm({
     try {
       await onSubmit({
         ...(mode === 'create' ? { patientId: selectedPatientId } : {}),
-        occurredAt: localDateTimeToOffsetIso(occurredLocal),
+        occurredAt: hospitalDateTimeToOffsetIso(occurredLocal),
         appointmentId,
         admissionId,
         diagnoses,
@@ -132,11 +132,9 @@ export function MedicalRecordForm({
     }
   }
 
-  const defaultOccurred = record
-    ? new Date(record.occurredAt)
-    : new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  const occurredDefault = `${defaultOccurred.getFullYear()}-${pad(defaultOccurred.getMonth() + 1)}-${pad(defaultOccurred.getDate())}T${pad(defaultOccurred.getHours())}:${pad(defaultOccurred.getMinutes())}`
+  const occurredDefault = instantToHospitalInput(
+    record?.occurredAt ?? new Date().toISOString(),
+  )
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -175,13 +173,13 @@ export function MedicalRecordForm({
         />
         <TextField
           defaultValue={record?.appointmentId ?? ''}
-          helperText="Optional existing appointment UUID. Leave blank for no outpatient context."
+          helperText="Optional. Leave blank if this record is not linked to an appointment."
           label="Appointment ID"
           name="appointmentId"
         />
         <TextField
           defaultValue={record?.admissionId ?? ''}
-          helperText="Optional existing admission UUID. Leave blank for no inpatient context."
+          helperText="Optional. Leave blank if this record is not linked to an admission."
           label="Admission ID"
           name="admissionId"
         />

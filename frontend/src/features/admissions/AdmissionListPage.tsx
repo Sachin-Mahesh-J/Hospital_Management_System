@@ -1,3 +1,4 @@
+import { formatHospitalDateTime } from '../../shared/datetime/hospitalTime'
 import {
   Button,
   FormControl,
@@ -6,7 +7,6 @@ import {
   Pagination,
   Paper,
   Select,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -18,7 +18,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { Can } from '../../auth/Can'
+import { useAuth } from '../../auth/authContext'
+import { hasPermission } from '../../auth/permission'
+import { FilterBar } from '../../shared/components/FilterBar'
+import { filterControlSx } from '../../shared/components/layoutSx'
 import { Page } from '../../shared/components/Page'
+import { StatusChip } from '../../shared/components/StatusChip'
 import {
   EmptyState,
   ErrorState,
@@ -35,6 +40,8 @@ import {
 export function AdmissionListPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<AdmissionStatus | ''>('')
+  const { user } = useAuth()
+  const canRegisterAdmission = hasPermission(user, 'admission.create')
   const query = useAdmissions({
     page,
     pageSize: 20,
@@ -44,7 +51,7 @@ export function AdmissionListPage() {
   return (
     <Page
       title="Admissions"
-      description="Minimal inpatient admissions. Bed, ward, billing, and discharge actions are not part of this module for current roles."
+      description="Inpatient admissions."
       actions={
         <Can permission="admission.create">
           <Button component={Link} to="/admissions/new" variant="contained">
@@ -53,9 +60,8 @@ export function AdmissionListPage() {
         </Can>
       }
     >
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+      <FilterBar>
+          <FormControl size="small" sx={filterControlSx}>
             <InputLabel id="admission-status-filter">Status</InputLabel>
             <Select
               label="Status"
@@ -72,8 +78,7 @@ export function AdmissionListPage() {
               ))}
             </Select>
           </FormControl>
-        </Stack>
-      </Paper>
+      </FilterBar>
 
       {query.isLoading && <LoadingState label="Loading admissions" />}
       {query.isError && (
@@ -84,8 +89,19 @@ export function AdmissionListPage() {
       )}
       {query.data && query.data.data.length === 0 && (
         <EmptyState
+          action={
+            canRegisterAdmission ? (
+              <Button component={Link} to="/admissions/new" variant="contained">
+                Register admission
+              </Button>
+            ) : undefined
+          }
+          description={
+            canRegisterAdmission
+              ? 'Adjust the status filter or register a new admission.'
+              : 'No admissions match the current filter.'
+          }
           title="No admissions found"
-          description="Adjust the filter or register an admission."
         />
       )}
       {query.data && query.data.data.length > 0 && (
@@ -109,11 +125,11 @@ export function AdmissionListPage() {
                     <TableCell>{admission.admissionNumber}</TableCell>
                     <TableCell>{patientLabel(admission.patient)}</TableCell>
                     <TableCell>{doctorLabel(admission.attendingDoctor)}</TableCell>
-                    <TableCell>{admission.status}</TableCell>
-                    <TableCell>{new Date(admission.admittedAt).toLocaleString()}</TableCell>
+                    <TableCell><StatusChip value={admission.status} /></TableCell>
+                    <TableCell>{formatHospitalDateTime(admission.admittedAt)}</TableCell>
                     <TableCell>
                       {admission.dischargedAt
-                        ? new Date(admission.dischargedAt).toLocaleString()
+                        ? formatHospitalDateTime(admission.dischargedAt)
                         : '—'}
                     </TableCell>
                     <TableCell align="right">

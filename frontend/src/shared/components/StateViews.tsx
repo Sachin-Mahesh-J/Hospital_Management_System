@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 export function LoadingState({ label = 'Loading' }: { label?: string }) {
   return (
     <Box sx={{ py: 6, textAlign: 'center' }} role="status">
-      <CircularProgress aria-label={label} />
+      <CircularProgress aria-label={label} size={32} />
       <Typography color="text.secondary" sx={{ mt: 2 }}>
         {label}
       </Typography>
@@ -31,7 +31,7 @@ export function ErrorState({
       action={
         onRetry ? (
           <Button color="inherit" onClick={onRetry} size="small">
-            Retry
+            Try again
           </Button>
         ) : undefined
       }
@@ -54,13 +54,23 @@ export function EmptyState({
   return (
     <Stack
       spacing={1.5}
-      sx={{ alignItems: 'center', py: 6, textAlign: 'center' }}
+      sx={{
+        alignItems: 'center',
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 2,
+        px: 3,
+        py: 6,
+        textAlign: 'center',
+      }}
     >
       <Typography component="h2" variant="h6">
         {title}
       </Typography>
       {description && (
-        <Typography color="text.secondary">{description}</Typography>
+        <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
+          {description}
+        </Typography>
       )}
       {action}
     </Stack>
