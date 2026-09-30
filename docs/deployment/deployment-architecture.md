@@ -19,7 +19,7 @@ Recorded during M17 preparation. Secrets are not stored in Git.
 | Vercel production URL | Not live yet |
 | Render API URL | Not live yet |
 
-The database password, JWT secret, and Storage service role key belong only in the
+The database password, JWT secret, and Storage Secret API key belong only in the
 provider dashboards. After those values exist, run `npm run prisma:migrate:deploy`
 against production `DIRECT_URL` to confirm Prisma agrees the history is applied.
 
@@ -79,7 +79,7 @@ Backend (Render environment variables):
 - `DEFAULT_CURRENCY` — ISO 4217 code, for example `LKR`
 - `LOG_LEVEL` — `info` in production
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` — backend only
+- `SUPABASE_SECRET_KEY` — backend only
 - `SUPABASE_STORAGE_BUCKET`
 - `DOCUMENT_SIGNED_URL_TTL_SECONDS` — default `300`
 - `DOCUMENT_STORAGE_DRIVER` — `supabase` in production; `memory` is rejected
@@ -105,8 +105,8 @@ idle timeout, seven-day absolute refresh lifetime.
    reachable from every provider.
 6. Create a private Storage bucket named to match `SUPABASE_STORAGE_BUCKET`. Public
    access must stay disabled. Do not create public object URLs.
-7. Keep the service role key on the backend only. Never put it in Vercel or the
-   frontend bundle.
+7. Keep the Secret API key (`SUPABASE_SECRET_KEY`) on the backend only. Never put it
+   in Vercel or the frontend bundle.
 8. HMS talks to PostgreSQL only through Prisma. In the Supabase API settings, disable
    the Data API / PostgREST for this project so the anon key cannot reach public tables.
    Do not treat the frontend publishable key as a data-access credential.

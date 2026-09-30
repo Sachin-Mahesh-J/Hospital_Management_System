@@ -14,7 +14,7 @@ const validEnvironment = {
   HOSPITAL_TIMEZONE: 'Asia/Colombo',
   DEFAULT_CURRENCY: 'LKR',
   SUPABASE_URL: 'https://example.supabase.co',
-  SUPABASE_SERVICE_ROLE_KEY: 'test-only-service-role-key',
+  SUPABASE_SECRET_KEY: 'test-only-supabase-secret-key',
   SUPABASE_STORAGE_BUCKET: 'hms-patient-documents',
 }
 
@@ -33,6 +33,7 @@ describe('environment configuration', () => {
     expect(configuration.hospital.timezone).toBe('Asia/Colombo')
     expect(configuration.hospital.defaultCurrency).toBe('LKR')
     expect(configuration.storage.bucket).toBe('hms-patient-documents')
+    expect(configuration.storage.secretKey).toBe('test-only-supabase-secret-key')
     expect(configuration.storage.signedUrlTtlSeconds).toBe(300)
     expect(configuration.storage.driver).toBe('supabase')
   })
@@ -90,5 +91,8 @@ describe('environment configuration', () => {
         DEFAULT_CURRENCY: 'lkr',
       }),
     ).toThrow('DEFAULT_CURRENCY')
+    expect(() =>
+      loadEnvironment({ ...validEnvironment, SUPABASE_SECRET_KEY: '' }),
+    ).toThrow('SUPABASE_SECRET_KEY')
   })
 })

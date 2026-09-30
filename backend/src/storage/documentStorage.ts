@@ -36,7 +36,7 @@ function createMemoryStorage(): DocumentStorage {
 }
 
 function createSupabaseStorage(): DocumentStorage {
-  const client = createClient(env.storage.supabaseUrl, env.storage.serviceRoleKey, {
+  const client = createClient(env.storage.supabaseUrl, env.storage.secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const bucket = env.storage.bucket

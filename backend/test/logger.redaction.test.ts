@@ -20,7 +20,7 @@ describe('logger redaction', () => {
         'DATABASE_URL',
         'DIRECT_URL',
         'JWT_ACCESS_SECRET',
-        'SUPABASE_SERVICE_ROLE_KEY',
+        'SUPABASE_SECRET_KEY',
       ]),
     )
   })

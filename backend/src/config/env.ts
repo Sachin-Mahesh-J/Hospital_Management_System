@@ -50,7 +50,7 @@ const environmentSchema = z
     .string()
     .regex(/^[A-Z]{3}$/, 'must be a 3-letter ISO 4217 currency code'),
   SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(16),
+  SUPABASE_SECRET_KEY: z.string().min(16),
   SUPABASE_STORAGE_BUCKET: z.string().min(1).max(100),
   DOCUMENT_SIGNED_URL_TTL_SECONDS: z.coerce
     .number()
@@ -111,7 +111,7 @@ export type AppConfig = {
   storage: {
     driver: 'supabase' | 'memory'
     supabaseUrl: string
-    serviceRoleKey: string
+    secretKey: string
     bucket: string
     signedUrlTtlSeconds: number
   }
@@ -180,7 +180,7 @@ export function loadEnvironment(
           ? 'memory'
           : result.data.DOCUMENT_STORAGE_DRIVER,
       supabaseUrl: result.data.SUPABASE_URL,
-      serviceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,
+      secretKey: result.data.SUPABASE_SECRET_KEY,
       bucket: result.data.SUPABASE_STORAGE_BUCKET,
       signedUrlTtlSeconds: result.data.DOCUMENT_SIGNED_URL_TTL_SECONDS,
     },

@@ -25,7 +25,7 @@ PostgreSQL, and issues short-lived signed download URLs after authorization.
 Configuration:
 
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (backend only)
+- `SUPABASE_SECRET_KEY` (backend only)
 - `SUPABASE_STORAGE_BUCKET`
 - `DOCUMENT_SIGNED_URL_TTL_SECONDS` (default 300; allowed 30–900)
 - `DOCUMENT_STORAGE_DRIVER` (`supabase` or `memory`). `memory` is allowed only in

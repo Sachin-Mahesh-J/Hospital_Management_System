@@ -81,8 +81,8 @@ Backend:
 - `TRUST_PROXY` — set to `true` only behind Render's trusted reverse proxy.
 - `HOSPITAL_TIMEZONE` — IANA time zone used for calendar-day expiry, report, and dashboard boundaries.
 - `DEFAULT_CURRENCY` — ISO 4217 currency used for every invoice and payment.
-- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_STORAGE_BUCKET` —
-  private patient-document storage (ADR-004). The service role key stays
+- `SUPABASE_URL` / `SUPABASE_SECRET_KEY` / `SUPABASE_STORAGE_BUCKET` —
+  private patient-document storage (ADR-004). The Secret API key stays
   backend-only. Use a dedicated non-production bucket locally.
 - `DOCUMENT_SIGNED_URL_TTL_SECONDS` — signed download lifetime; default 300.
 - `DOCUMENT_STORAGE_DRIVER` — `supabase` in production; `memory` is allowed only in

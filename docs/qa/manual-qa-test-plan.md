@@ -1221,7 +1221,7 @@ Do not attempt to exploit production. Local checks only. Do not write exploits o
 | P28-20 | IDOR documents | Wrong patientId plus a real documentId | 404 |
 | P28-21 | Document signed URL | Memory vs Supabase | Memory URL is not a real download; Supabase URL is time-limited |
 | P28-22 | Audit redaction | Viewer and export | No passwords, tokens, signed URLs, or `sourceIp` |
-| P28-23 | Sensitive logging | Backend console during login/reset | Password/token/service-role not logged |
+| P28-23 | Sensitive logging | Backend console during login/reset | Password/token/Supabase secret key not logged |
 | P28-24 | Storage | `localStorage` / `sessionStorage` | No tokens |
 | P28-25 | JSON body limit | Very large POST | Controlled rejection; no crash |
 | P28-26 | Admission write ungranted | PATCH/discharge/cancel with any role | 403 |
