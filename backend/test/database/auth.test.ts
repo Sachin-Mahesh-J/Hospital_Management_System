@@ -206,6 +206,9 @@ describe('authentication API', () => {
     const wrongPassword = await login(admin.user.username, 'Wrong password 42')
     expect(wrongPassword.status).toBe(401)
     expect(wrongPassword.body.error.code).toBe('INVALID_CREDENTIALS')
+    expect(
+      await prisma.refreshSession.count({ where: { userId: admin.user.id } }),
+    ).toBe(1)
   })
 
   it('logs in, resets failures, creates a hashed session, and audits safely', async () => {

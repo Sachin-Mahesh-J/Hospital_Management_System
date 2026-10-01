@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client'
 import {
   FAILED_LOGIN_LIMIT,
-  LOGIN_TRANSACTION_TIMEOUT_MS,
   REFRESH_ABSOLUTE_TTL_MS,
   REFRESH_IDLE_TTL_MS,
   TEMPORARY_LOCK_MS,
@@ -53,6 +52,18 @@ type LockedSession = {
   idleExpiresAt: Date
   revokedAt: Date | null
   replacedBySessionId: string | null
+}
+
+async function findUserByUsername(username: string): Promise<LockedUser | null> {
+  const rows = await database.client.$queryRaw<LockedUser[]>`
+    SELECT id, username, password_hash AS "passwordHash",
+      status, password_changed_at AS "passwordChangedAt",
+      failed_login_count AS "failedLoginCount",
+      locked_until AS "lockedUntil"
+    FROM users
+    WHERE lower(username) = lower(${username})
+  `
+  return rows[0] ?? null
 }
 
 async function lockUserByUsername(
@@ -186,13 +197,18 @@ export async function login(
   input: LoginBody,
   context: { requestId: string; userAgent?: string | undefined },
 ) {
+  const snapshot = await findUserByUsername(input.username)
+  const passwordValid = await verifyPassword(
+    snapshot?.passwordHash ?? (await dummyPasswordHash),
+    input.password,
+  )
+
   const result = await database.client.$transaction(
     async (transaction) => {
       const now = new Date()
       const user = await lockUserByUsername(transaction, input.username)
 
       if (!user) {
-        await verifyPassword(await dummyPasswordHash, input.password)
         await writeAudit(
           {
             action: 'auth.login',
@@ -206,16 +222,21 @@ export async function login(
         return { authenticated: false as const }
       }
 
+      const credentialsCurrent =
+        snapshot !== null &&
+        snapshot.id === user.id &&
+        snapshot.passwordHash === user.passwordHash
+      const passwordOk = credentialsCurrent && passwordValid
       const eligible =
         user.status === 'active' &&
         (!user.lockedUntil || user.lockedUntil <= now)
-      const passwordValid = await verifyPassword(user.passwordHash, input.password)
 
-      if (!eligible || !passwordValid) {
+      if (!eligible || !passwordOk) {
         if (
+          credentialsCurrent &&
           user.status === 'active' &&
           (!user.lockedUntil || user.lockedUntil <= now) &&
-          !passwordValid
+          !passwordOk
         ) {
           const failedLoginCount =
             user.lockedUntil && user.lockedUntil <= now
@@ -308,10 +329,7 @@ export async function login(
         user: toCurrentUser(profile),
       }
     },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      timeout: LOGIN_TRANSACTION_TIMEOUT_MS,
-    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   )
 
   if (!result.authenticated) {

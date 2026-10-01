@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { SignJWT } from 'jose'
 import { describe, expect, it } from 'vitest'
-import { LOGIN_TRANSACTION_TIMEOUT_MS } from '../src/auth/auth.constants.js'
 import {
   hashPassword,
   validatePasswordPolicy,
@@ -57,8 +59,32 @@ describe('password security', () => {
     expect(validatePasswordPolicy('aaaaaaaaaaa1')).toBe(false)
   })
 
-  it('gives login enough time for Argon2id inside the Prisma interactive transaction', () => {
-    expect(LOGIN_TRANSACTION_TIMEOUT_MS).toBeGreaterThan(5_000)
+  it('verifies Argon2id outside the login Prisma interactive transaction', () => {
+    const source = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../src/modules/auth/auth.service.ts',
+      ),
+      'utf8',
+    )
+    const loginStart = source.indexOf('export async function login(')
+    const loginEnd = source.indexOf('export async function refresh(')
+    expect(loginStart).toBeGreaterThan(-1)
+    expect(loginEnd).toBeGreaterThan(loginStart)
+
+    const loginSource = source.slice(loginStart, loginEnd)
+    const transactionIndex = loginSource.indexOf('$transaction')
+    expect(transactionIndex).toBeGreaterThan(-1)
+    expect(loginSource.slice(0, transactionIndex)).toMatch(/verifyPassword\s*\(/)
+    expect(loginSource.slice(transactionIndex)).not.toMatch(
+      /verifyPassword\s*\(/,
+    )
+    expect(loginSource).toMatch(/TransactionIsolationLevel\.Serializable/)
+    expect(loginSource).toMatch(/lockUserByUsername\(/)
+    expect(loginSource).not.toMatch(/timeout\s*:/)
+    expect(source.slice(0, loginStart)).toMatch(
+      /WHERE lower\(username\) = lower\(\$\{username\}\)\s+FOR UPDATE/,
+    )
   })
 })
 
