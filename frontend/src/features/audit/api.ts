@@ -11,7 +11,7 @@ type PaginatedResponse = {
   meta: { pagination: AuditListResult['pagination'] }
 }
 
-export function auditQueryString(
+function auditQueryString(
   filters: Omit<AuditFilters, 'page' | 'pageSize'> & {
     page?: number
     pageSize?: number

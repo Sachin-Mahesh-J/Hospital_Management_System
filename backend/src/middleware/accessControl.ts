@@ -8,7 +8,7 @@ import { writeAudit } from '../modules/audit/audit.service.js'
 
 async function auditDenial(
   response: Response,
-  metadata: { permission?: string; roles?: string },
+  metadata: { permission?: string },
 ): Promise<void> {
   try {
     await writeAudit({
@@ -38,25 +38,6 @@ export const requireAuthentication: RequestHandler = (
   }
 
   next()
-}
-
-export function requireAnyRole(...roles: readonly string[]): RequestHandler {
-  return async (_request, response, next) => {
-    const currentUser = response.locals.currentUser
-
-    if (!currentUser) {
-      next(new AuthenticationError())
-      return
-    }
-
-    if (!roles.some((role) => currentUser.roles.includes(role))) {
-      await auditDenial(response, { roles: roles.join(',') })
-      next(new AuthorizationError())
-      return
-    }
-
-    next()
-  }
 }
 
 export function requirePermission(permission: string): RequestHandler {

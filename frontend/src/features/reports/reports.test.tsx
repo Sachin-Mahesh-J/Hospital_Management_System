@@ -14,14 +14,12 @@ import { AppShell } from '../../app/AppShell'
 import { appRoutes } from '../../app/routes'
 import { HomePage } from '../../pages/HomePage'
 import { NotificationProvider } from '../../shared/notifications/NotificationProvider'
-import * as healthApi from '../../api/health'
 import * as reportApi from './api'
 import { PatientReportPage } from './PatientReportPage'
 import { ReportsHomePage } from './ReportsHomePage'
 import type { Dashboard, PatientReportRow } from './types'
 
 vi.mock('./api')
-vi.mock('../../api/health')
 
 const patientRow: PatientReportRow = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -70,11 +68,6 @@ function renderWithAuth(ui: ReactNode, permissions: string[]) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  vi.mocked(healthApi.getHealth).mockResolvedValue({
-    status: 'ok',
-    service: 'hms-api',
-    timestamp: '2026-09-28T00:00:00.000Z',
-  })
 })
 
 describe('report navigation', () => {
