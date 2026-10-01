@@ -30,6 +30,12 @@ describe('application lifecycle', () => {
     await Promise.all([handle.shutdown('test'), handle.shutdown('test')])
 
     expect(events).toEqual(['connect', 'listening', 'disconnect'])
+    expect(lifecycleLogger.info.mock.calls.map(([, message]) => message)).toEqual([
+      'HMS API startup: connecting to database',
+      'HMS API startup: database connected',
+      'HMS API listening',
+      'Shutting down HMS API',
+    ])
     expect(database.connect).toHaveBeenCalledOnce()
     expect(database.disconnect).toHaveBeenCalledOnce()
     expect(handle.server.listening).toBe(false)
@@ -41,17 +47,24 @@ describe('application lifecycle', () => {
       connect: vi.fn().mockRejectedValue(startupError),
       disconnect: vi.fn().mockResolvedValue(undefined),
     }
+    const lifecycleLogger = {
+      info: vi.fn(),
+      error: vi.fn(),
+    }
 
     await expect(
       startApplication({
         app: express(),
         port: 0,
         database,
-        logger: { info: vi.fn(), error: vi.fn() },
+        logger: lifecycleLogger,
         registerSignalHandlers: false,
       }),
     ).rejects.toBe(startupError)
 
     expect(database.disconnect).toHaveBeenCalledOnce()
+    expect(lifecycleLogger.info.mock.calls.map(([, message]) => message)).toEqual([
+      'HMS API startup: connecting to database',
+    ])
   })
 })

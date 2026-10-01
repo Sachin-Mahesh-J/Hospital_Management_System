@@ -59,7 +59,9 @@ export async function startApplication(
   const lifecycleLogger = options.logger ?? logger
 
   try {
+    lifecycleLogger.info({}, 'HMS API startup: connecting to database')
     await databaseLifecycle.connect()
+    lifecycleLogger.info({}, 'HMS API startup: database connected')
   } catch (error) {
     try {
       await databaseLifecycle.disconnect()
