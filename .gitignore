@@ -22,6 +22,7 @@ uploads/
 # Editor and operating system files
 .idea/
 .vscode/
+.cursor/
 .DS_Store
 Thumbs.db
 

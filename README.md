@@ -69,7 +69,6 @@ Hospital_Management_System/
 │   │   ├── scripts/          Admin bootstrap, demo seed, maintenance
 │   │   └── storage/          Document storage drivers (Supabase / memory)
 │   └── test/                 API, schema, and database tests
-├── docs/                     Internal project notes (not required to run the app)
 ├── vercel.json               Vercel frontend deployment
 ├── render.yaml               Alternative Node API hosting blueprint (not current production)
 └── .github/workflows/ci.yml  Lint, typecheck, tests, Prisma validate, build, audit
@@ -126,7 +125,6 @@ During seed, the script generates small sample PDF files and stores them as pati
 - `backend/src/scripts/copy-audit-font.mjs` copies the audit-export font into the backend build output
 - `backend/src/modules/audit/fonts/` supplies the font used for Unicode-safe audit PDF export
 - `backend/prisma.config.ts` configures Prisma CLI schema and migration paths
-- `docs/` contains internal project notes. This README is the public description of the running system.
 
 ## Prerequisites
 
