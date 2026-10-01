@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import {
   FAILED_LOGIN_LIMIT,
+  LOGIN_TRANSACTION_TIMEOUT_MS,
   REFRESH_ABSOLUTE_TTL_MS,
   REFRESH_IDLE_TTL_MS,
   TEMPORARY_LOCK_MS,
@@ -307,7 +308,10 @@ export async function login(
         user: toCurrentUser(profile),
       }
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      timeout: LOGIN_TRANSACTION_TIMEOUT_MS,
+    },
   )
 
   if (!result.authenticated) {

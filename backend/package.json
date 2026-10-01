@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:database": "tsx test/database/run-database-tests.ts",
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
+    "db:seed:demo": "tsx src/scripts/seed-demo.ts",
+    "db:seed:demo:dry-run": "tsx src/scripts/seed-demo.ts --dry-run",
     "sync:permissions": "tsx src/scripts/sync-role-permissions.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",

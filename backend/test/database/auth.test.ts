@@ -171,6 +171,43 @@ afterAll(async () => {
 })
 
 describe('authentication API', () => {
+  it('authenticates active users and rejects inactive or wrong passwords', async () => {
+    const demoPassword = 'HmsDemo@123'
+    const admin = await createUser({ password: demoPassword })
+    const doctor = await createUser({
+      password: demoPassword,
+      roleId: secondaryRoleId,
+    })
+    const inactive = await createUser({
+      password: demoPassword,
+      status: 'disabled',
+    })
+
+    const adminLogin = await login(admin.user.username, demoPassword)
+    expect(adminLogin.status).toBe(200)
+    expect(adminLogin.body.data.accessToken).toEqual(expect.any(String))
+    expect(adminLogin.body.data.user).toMatchObject({
+      id: admin.user.id,
+      username: admin.user.username,
+    })
+    expect(setCookieHeader(adminLogin)).toContain('HttpOnly')
+
+    const doctorLogin = await login(doctor.user.username, demoPassword)
+    expect(doctorLogin.status).toBe(200)
+    expect(doctorLogin.body.data.accessToken).toEqual(expect.any(String))
+
+    const inactiveLogin = await login(inactive.user.username, demoPassword)
+    expect(inactiveLogin.status).toBe(401)
+    expect(inactiveLogin.body.error.code).toBe('INVALID_CREDENTIALS')
+    expect(
+      await prisma.refreshSession.count({ where: { userId: inactive.user.id } }),
+    ).toBe(0)
+
+    const wrongPassword = await login(admin.user.username, 'Wrong password 42')
+    expect(wrongPassword.status).toBe(401)
+    expect(wrongPassword.body.error.code).toBe('INVALID_CREDENTIALS')
+  })
+
   it('logs in, resets failures, creates a hashed session, and audits safely', async () => {
     const { user, plainPassword } = await createUser({ failedLoginCount: 3 })
     const response = await login(user.username, plainPassword)

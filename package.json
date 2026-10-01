@@ -14,7 +14,9 @@
     "test": "npm run test -w backend && npm run test -w frontend",
     "test:database": "npm run test:database -w backend",
     "prisma:generate": "npm run prisma:generate -w backend",
-    "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w backend"
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy -w backend",
+    "db:seed:demo": "npm run db:seed:demo --workspace=backend --",
+    "db:seed:demo:dry-run": "npm run db:seed:demo:dry-run --workspace=backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

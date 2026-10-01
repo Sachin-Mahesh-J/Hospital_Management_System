@@ -3,6 +3,7 @@ export const REFRESH_ABSOLUTE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 export const REFRESH_IDLE_TTL_MS = 30 * 60 * 1000
 export const TEMPORARY_LOCK_MS = 15 * 60 * 1000
 export const FAILED_LOGIN_LIMIT = 5
+export const LOGIN_TRANSACTION_TIMEOUT_MS = 20_000
 
 export const AUTH_CSRF_HEADER = 'x-hms-csrf'
 export const AUTH_CSRF_VALUE = '1'

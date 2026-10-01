@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { SignJWT } from 'jose'
 import { describe, expect, it } from 'vitest'
+import { LOGIN_TRANSACTION_TIMEOUT_MS } from '../src/auth/auth.constants.js'
 import {
   hashPassword,
   validatePasswordPolicy,
@@ -54,6 +55,10 @@ describe('password security', () => {
     expect(validatePasswordPolicy('alllettersonly')).toBe(false)
     expect(validatePasswordPolicy('123456789012')).toBe(false)
     expect(validatePasswordPolicy('aaaaaaaaaaa1')).toBe(false)
+  })
+
+  it('gives login enough time for Argon2id inside the Prisma interactive transaction', () => {
+    expect(LOGIN_TRANSACTION_TIMEOUT_MS).toBeGreaterThan(5_000)
   })
 })
 
