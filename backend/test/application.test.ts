@@ -66,5 +66,6 @@ describe('application lifecycle', () => {
     expect(lifecycleLogger.info.mock.calls.map(([, message]) => message)).toEqual([
       'HMS API startup: connecting to database',
     ])
+    expect(startupError).toMatchObject({ startupPhase: 'database_connect' })
   })
 })

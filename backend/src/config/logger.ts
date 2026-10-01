@@ -95,41 +95,120 @@ export const logger = pino({
   },
 })
 
-const POSTGRES_CONNECTION_URL = /(?:postgres(?:ql)?):\/\/\S+/gi
+const SECRET_TEXT = [
+  /(?:postgres(?:ql)?):\/\/\S+/gi,
+  /(?:https?):\/\/[^/\s:@]+:[^/\s:@]+@\S+/gi,
+  /(?:authorization|cookie|bearer|token|api[_-]?key|secret)[=:\s]+\S+/gi,
+  /(?:password|passwd|pwd|secret|apikey|api_key)=[^\s&]+/gi,
+] as const
+
+export type StartupPhase =
+  | 'before_database'
+  | 'database_connect'
+  | 'after_database'
+  | 'listen'
 
 export type StartupErrorLog = {
   name: string
   message: string
+  phase?: StartupPhase
   stack?: string
   code?: string
   errorCode?: string
   clientVersion?: string
+  syscall?: string
+  driver?: string
 }
 
-function redactConnectionUrls(value: string): string {
-  return value.replace(POSTGRES_CONNECTION_URL, '[REDACTED]')
+function redactSecrets(value: string): string {
+  return SECRET_TEXT.reduce(
+    (redacted, pattern) => redacted.replace(pattern, '[REDACTED]'),
+    value,
+  )
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value && typeof value === 'object') {
+    return value as Record<string, unknown>
+  }
+
+  return undefined
 }
 
 function readStringProperty(error: object, key: string): string | undefined {
   const value = (error as Record<string, unknown>)[key]
-  return typeof value === 'string' && value.length > 0 ? value : undefined
+  if (typeof value === 'string' && value.length > 0) {
+    return value
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+  return undefined
+}
+
+function readFromErrorChain(error: object, key: string): string | undefined {
+  let current: unknown = error
+
+  for (let depth = 0; depth < 4 && current && typeof current === 'object'; depth += 1) {
+    const value = readStringProperty(current, key)
+    if (value) {
+      return value
+    }
+
+    current = asRecord(current)?.cause
+  }
+
+  return undefined
+}
+
+function readStartupPhase(error: object): StartupPhase | undefined {
+  const phase = readFromErrorChain(error, 'startupPhase')
+  if (
+    phase === 'before_database' ||
+    phase === 'database_connect' ||
+    phase === 'after_database' ||
+    phase === 'listen'
+  ) {
+    return phase
+  }
+
+  return undefined
 }
 
 export function serializeStartupError(error: unknown): StartupErrorLog {
-  if (error instanceof Error) {
+  if (error instanceof Error || (error && typeof error === 'object')) {
+    const source = error as object
+    const name =
+      error instanceof Error
+        ? error.name || 'Error'
+        : readStringProperty(source, 'name') || 'object'
+    const message =
+      error instanceof Error
+        ? error.message
+        : readStringProperty(source, 'message') || String(error)
+
     const serialized: StartupErrorLog = {
-      name: error.name || 'Error',
-      message: redactConnectionUrls(error.message),
+      name,
+      message: redactSecrets(message),
+      driver: 'postgresql',
     }
 
-    if (error.stack) {
-      serialized.stack = redactConnectionUrls(error.stack)
+    const phase = readStartupPhase(source)
+    const stack =
+      error instanceof Error && error.stack
+        ? redactSecrets(error.stack)
+        : undefined
+    const code = readFromErrorChain(source, 'code')
+    const errorCode = readFromErrorChain(source, 'errorCode')
+    const clientVersion = readFromErrorChain(source, 'clientVersion')
+    const syscall = readFromErrorChain(source, 'syscall')
+
+    if (phase) {
+      serialized.phase = phase
     }
-
-    const code = readStringProperty(error, 'code')
-    const errorCode = readStringProperty(error, 'errorCode')
-    const clientVersion = readStringProperty(error, 'clientVersion')
-
+    if (stack) {
+      serialized.stack = stack
+    }
     if (code) {
       serialized.code = code
     }
@@ -139,20 +218,56 @@ export function serializeStartupError(error: unknown): StartupErrorLog {
     if (clientVersion) {
       serialized.clientVersion = clientVersion
     }
+    if (syscall) {
+      serialized.syscall = syscall
+    }
 
     return serialized
   }
 
   return {
     name: typeof error,
-    message: redactConnectionUrls(String(error)),
+    message: redactSecrets(String(error)),
+    driver: 'postgresql',
   }
+}
+
+export function formatStartupFailureMessage(startupError: StartupErrorLog): string {
+  const parts = [
+    'HMS API failed to start',
+    `phase=${startupError.phase ?? 'unknown'}`,
+    `name=${startupError.name}`,
+    `message=${startupError.message}`,
+    `driver=${startupError.driver ?? 'postgresql'}`,
+  ]
+
+  if (startupError.code) {
+    parts.push(`code=${startupError.code}`)
+  }
+  if (startupError.errorCode) {
+    parts.push(`errorCode=${startupError.errorCode}`)
+  }
+  if (startupError.clientVersion) {
+    parts.push(`clientVersion=${startupError.clientVersion}`)
+  }
+  if (startupError.syscall) {
+    parts.push(`syscall=${startupError.syscall}`)
+  }
+
+  return parts.join(' | ')
+}
+
+export function writeStartupDiagnostic(message: string): void {
+  console.error(message)
 }
 
 export function logStartupFailure(error: unknown): void {
   const startupError = serializeStartupError(error)
-  logger.fatal(
-    { startupError },
-    `HMS API failed to start: ${startupError.name}: ${startupError.message}`,
-  )
+  const message = formatStartupFailureMessage(startupError)
+  logger.fatal({ startupError }, message)
+  console.error(message)
+  if (startupError.stack) {
+    console.error(startupError.stack)
+  }
+  logger.flush()
 }

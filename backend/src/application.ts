@@ -3,7 +3,11 @@ import type { AddressInfo } from 'node:net'
 import type { Express } from 'express'
 import { createApp } from './app.js'
 import { env } from './config/env.js'
-import { logger } from './config/logger.js'
+import {
+  logger,
+  writeStartupDiagnostic,
+  type StartupPhase,
+} from './config/logger.js'
 import { database } from './database/database.service.js'
 
 type DatabaseLifecycle = {
@@ -38,6 +42,18 @@ function listen(app: Express, port: number): Promise<Server> {
   })
 }
 
+function withStartupPhase(error: unknown, phase: StartupPhase): unknown {
+  if (error instanceof Error) {
+    Object.assign(error, { startupPhase: phase })
+    return error
+  }
+
+  const wrapped = new Error(typeof error === 'string' ? error : 'Startup failed')
+  wrapped.name = 'StartupError'
+  Object.assign(wrapped, { startupPhase: phase })
+  return wrapped
+}
+
 function close(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {
@@ -53,15 +69,25 @@ function close(server: Server): Promise<void> {
 export async function startApplication(
   options: StartApplicationOptions = {},
 ): Promise<ApplicationHandle> {
-  const app = options.app ?? createApp()
+  let phase: StartupPhase = 'before_database'
+  let app: Express
+  try {
+    app = options.app ?? createApp()
+  } catch (error) {
+    throw withStartupPhase(error, phase)
+  }
   const port = options.port ?? env.port
   const databaseLifecycle = options.database ?? database
   const lifecycleLogger = options.logger ?? logger
 
   try {
     lifecycleLogger.info({}, 'HMS API startup: connecting to database')
+    writeStartupDiagnostic('HMS API startup: connecting to database')
+    phase = 'database_connect'
     await databaseLifecycle.connect()
     lifecycleLogger.info({}, 'HMS API startup: database connected')
+    writeStartupDiagnostic('HMS API startup: database connected')
+    phase = 'after_database'
   } catch (error) {
     try {
       await databaseLifecycle.disconnect()
@@ -71,15 +97,16 @@ export async function startApplication(
         'Database cleanup after startup failure failed',
       )
     }
-    throw error
+    throw withStartupPhase(error, phase)
   }
 
   let server: Server
   try {
+    phase = 'listen'
     server = await listen(app, port)
   } catch (error) {
     await databaseLifecycle.disconnect()
-    throw error
+    throw withStartupPhase(error, phase)
   }
 
   const address = server.address() as AddressInfo | null
@@ -87,6 +114,7 @@ export async function startApplication(
     { port: address?.port ?? port },
     'HMS API listening',
   )
+  writeStartupDiagnostic('HMS API listening')
 
   let shutdownPromise: Promise<void> | null = null
   const signalHandlers = new Map<NodeJS.Signals, () => void>()
