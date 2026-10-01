@@ -59,7 +59,7 @@ describe('password security', () => {
     expect(validatePasswordPolicy('aaaaaaaaaaa1')).toBe(false)
   })
 
-  it('verifies Argon2id outside the login Prisma interactive transaction', () => {
+  it('keeps login password hashing, JWT signing, and RBAC reads outside the interactive transaction', () => {
     const source = readFileSync(
       join(
         dirname(fileURLToPath(import.meta.url)),
@@ -74,11 +74,25 @@ describe('password security', () => {
 
     const loginSource = source.slice(loginStart, loginEnd)
     const transactionIndex = loginSource.indexOf('$transaction')
-    expect(transactionIndex).toBeGreaterThan(-1)
-    expect(loginSource.slice(0, transactionIndex)).toMatch(/verifyPassword\s*\(/)
-    expect(loginSource.slice(transactionIndex)).not.toMatch(
-      /verifyPassword\s*\(/,
+    const isolationIndex = loginSource.indexOf(
+      'TransactionIsolationLevel.Serializable',
     )
+    expect(transactionIndex).toBeGreaterThan(-1)
+    expect(isolationIndex).toBeGreaterThan(transactionIndex)
+
+    const beforeTransaction = loginSource.slice(0, transactionIndex)
+    const insideTransaction = loginSource.slice(transactionIndex, isolationIndex)
+    const afterTransaction = loginSource.slice(isolationIndex)
+
+    expect(beforeTransaction).toMatch(/verifyPassword\s*\(/)
+    expect(insideTransaction).not.toMatch(/verifyPassword\s*\(/)
+    expect(insideTransaction).not.toMatch(/hashPassword\s*\(/)
+    expect(insideTransaction).not.toMatch(/issueAccessToken\s*\(/)
+    expect(insideTransaction).not.toMatch(/findUniqueOrThrow/)
+    expect(insideTransaction).toMatch(/lockUserByUsername\(/)
+    expect(insideTransaction).toMatch(/refreshSession\.create/)
+    expect(afterTransaction).toMatch(/issueAccessToken\s*\(/)
+    expect(afterTransaction).toMatch(/findUniqueOrThrow/)
     expect(loginSource).toMatch(/TransactionIsolationLevel\.Serializable/)
     expect(loginSource).toMatch(/lockUserByUsername\(/)
     expect(loginSource).not.toMatch(/timeout\s*:/)

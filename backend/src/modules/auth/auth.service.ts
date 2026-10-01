@@ -17,6 +17,7 @@ import {
   parseRefreshSessionId,
   refreshTokenMatches,
 } from '../../auth/token.service.js'
+import { logger } from '../../config/logger.js'
 import { database } from '../../database/database.service.js'
 import { AppError } from '../../errors/AppError.js'
 import { writeAudit } from '../audit/audit.service.js'
@@ -52,6 +53,84 @@ type LockedSession = {
   idleExpiresAt: Date
   revokedAt: Date | null
   replacedBySessionId: string | null
+}
+
+// Temporary P2028 diagnostics: stage name, request ID, and elapsed ms only.
+type LoginTxStage =
+  | 'login_tx_started'
+  | 'login_tx_user_locked'
+  | 'login_tx_state_rechecked'
+  | 'login_tx_user_updated'
+  | 'login_tx_session_created'
+  | 'login_tx_audit_written'
+  | 'login_tx_profile_loaded'
+  | 'login_tx_completed'
+
+type LoginWriteResult =
+  | { authenticated: false }
+  | {
+      authenticated: true
+      userId: string
+      passwordChangedAt: Date
+      refreshToken: string
+    }
+
+function loginTxElapsedMs(startedAt: number): number {
+  return Date.now() - startedAt
+}
+
+function prismaErrorCode(error: unknown): string | undefined {
+  return error instanceof Prisma.PrismaClientKnownRequestError
+    ? error.code
+    : undefined
+}
+
+function logLoginTxStage(
+  requestId: string,
+  startedAt: number,
+  stage: LoginTxStage,
+): void {
+  logger.info(
+    {
+      requestId,
+      loginTxStage: stage,
+      elapsedMs: loginTxElapsedMs(startedAt),
+    },
+    'Login transaction stage',
+  )
+}
+
+function logLoginTxStageFailure(
+  requestId: string,
+  startedAt: number,
+  stage: LoginTxStage,
+  error: unknown,
+): void {
+  logger.error(
+    {
+      requestId,
+      loginTxStage: stage,
+      elapsedMs: loginTxElapsedMs(startedAt),
+      prismaCode: prismaErrorCode(error),
+    },
+    'Login transaction stage failed',
+  )
+}
+
+async function withLoginTxStage<T>(
+  requestId: string,
+  startedAt: number,
+  stage: LoginTxStage,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    const result = await operation()
+    logLoginTxStage(requestId, startedAt, stage)
+    return result
+  } catch (error) {
+    logLoginTxStageFailure(requestId, startedAt, stage, error)
+    throw error
+  }
 }
 
 async function findUserByUsername(username: string): Promise<LockedUser | null> {
@@ -202,141 +281,217 @@ export async function login(
     snapshot?.passwordHash ?? (await dummyPasswordHash),
     input.password,
   )
+  const refresh = createRefreshToken()
+  const userAgentHash = hashUserAgent(context.userAgent)
+  const startedAt = Date.now()
+  logLoginTxStage(context.requestId, startedAt, 'login_tx_started')
 
-  const result = await database.client.$transaction(
-    async (transaction) => {
-      const now = new Date()
-      const user = await lockUserByUsername(transaction, input.username)
-
-      if (!user) {
-        await writeAudit(
-          {
-            action: 'auth.login',
-            resourceType: 'user',
-            outcome: 'failure',
-            requestId: context.requestId,
-            metadata: { reason: 'invalid_credentials' },
-          },
-          transaction,
+  let result: LoginWriteResult
+  try {
+    result = await database.client.$transaction(
+      async (transaction) => {
+        const now = new Date()
+        const user = await withLoginTxStage(
+          context.requestId,
+          startedAt,
+          'login_tx_user_locked',
+          () => lockUserByUsername(transaction, input.username),
         )
-        return { authenticated: false as const }
-      }
 
-      const credentialsCurrent =
-        snapshot !== null &&
-        snapshot.id === user.id &&
-        snapshot.passwordHash === user.passwordHash
-      const passwordOk = credentialsCurrent && passwordValid
-      const eligible =
-        user.status === 'active' &&
-        (!user.lockedUntil || user.lockedUntil <= now)
-
-      if (!eligible || !passwordOk) {
-        if (
-          credentialsCurrent &&
-          user.status === 'active' &&
-          (!user.lockedUntil || user.lockedUntil <= now) &&
-          !passwordOk
-        ) {
-          const failedLoginCount =
-            user.lockedUntil && user.lockedUntil <= now
-              ? 1
-              : user.failedLoginCount + 1
-          const lockedUntil =
-            failedLoginCount >= FAILED_LOGIN_LIMIT
-              ? new Date(now.getTime() + TEMPORARY_LOCK_MS)
-              : null
-          await transaction.user.update({
-            where: { id: user.id },
-            data: { failedLoginCount, lockedUntil, updatedAt: now },
-          })
-
-          if (lockedUntil) {
-            await writeAudit(
-              {
-                actorUserId: user.id,
-                action: 'auth.temporary_lock',
-                resourceType: 'user',
-                resourceId: user.id,
-                outcome: 'denied',
-                requestId: context.requestId,
-                metadata: { failedLoginCount },
-              },
-              transaction,
-            )
-          }
+        if (!user) {
+          await withLoginTxStage(
+            context.requestId,
+            startedAt,
+            'login_tx_audit_written',
+            () =>
+              writeAudit(
+                {
+                  action: 'auth.login',
+                  resourceType: 'user',
+                  outcome: 'failure',
+                  requestId: context.requestId,
+                  metadata: { reason: 'invalid_credentials' },
+                },
+                transaction,
+              ),
+          )
+          return { authenticated: false as const }
         }
 
-        await writeAudit(
-          {
-            actorUserId: user.id,
-            action: 'auth.login',
-            resourceType: 'user',
-            resourceId: user.id,
-            outcome: 'failure',
-            requestId: context.requestId,
-            metadata: {
-              reason:
-                user.status === 'active' ? 'invalid_credentials' : 'account_status',
-            },
-          },
-          transaction,
+        const credentialsCurrent =
+          snapshot !== null &&
+          snapshot.id === user.id &&
+          snapshot.passwordHash === user.passwordHash
+        const passwordOk = credentialsCurrent && passwordValid
+        const eligible =
+          user.status === 'active' &&
+          (!user.lockedUntil || user.lockedUntil <= now)
+        logLoginTxStage(context.requestId, startedAt, 'login_tx_state_rechecked')
+
+        if (!eligible || !passwordOk) {
+          if (
+            credentialsCurrent &&
+            user.status === 'active' &&
+            (!user.lockedUntil || user.lockedUntil <= now) &&
+            !passwordOk
+          ) {
+            const failedLoginCount =
+              user.lockedUntil && user.lockedUntil <= now
+                ? 1
+                : user.failedLoginCount + 1
+            const lockedUntil =
+              failedLoginCount >= FAILED_LOGIN_LIMIT
+                ? new Date(now.getTime() + TEMPORARY_LOCK_MS)
+                : null
+            await withLoginTxStage(
+              context.requestId,
+              startedAt,
+              'login_tx_user_updated',
+              () =>
+                transaction.user.update({
+                  where: { id: user.id },
+                  data: { failedLoginCount, lockedUntil, updatedAt: now },
+                }),
+            )
+
+            if (lockedUntil) {
+              await writeAudit(
+                {
+                  actorUserId: user.id,
+                  action: 'auth.temporary_lock',
+                  resourceType: 'user',
+                  resourceId: user.id,
+                  outcome: 'denied',
+                  requestId: context.requestId,
+                  metadata: { failedLoginCount },
+                },
+                transaction,
+              )
+            }
+          }
+
+          await withLoginTxStage(
+            context.requestId,
+            startedAt,
+            'login_tx_audit_written',
+            () =>
+              writeAudit(
+                {
+                  actorUserId: user.id,
+                  action: 'auth.login',
+                  resourceType: 'user',
+                  resourceId: user.id,
+                  outcome: 'failure',
+                  requestId: context.requestId,
+                  metadata: {
+                    reason:
+                      user.status === 'active'
+                        ? 'invalid_credentials'
+                        : 'account_status',
+                  },
+                },
+                transaction,
+              ),
+          )
+          return { authenticated: false as const }
+        }
+
+        const expiresAt = new Date(now.getTime() + REFRESH_ABSOLUTE_TTL_MS)
+        await withLoginTxStage(
+          context.requestId,
+          startedAt,
+          'login_tx_user_updated',
+          () =>
+            transaction.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginCount: 0,
+                lockedUntil: null,
+                lastLoginAt: now,
+                updatedAt: now,
+              },
+            }),
         )
-        return { authenticated: false as const }
-      }
+        await withLoginTxStage(
+          context.requestId,
+          startedAt,
+          'login_tx_session_created',
+          () =>
+            transaction.refreshSession.create({
+              data: {
+                id: refresh.sessionId,
+                userId: user.id,
+                tokenHash: refresh.hash,
+                expiresAt,
+                idleExpiresAt: new Date(now.getTime() + REFRESH_IDLE_TTL_MS),
+                userAgentHash,
+              },
+            }),
+        )
+        await withLoginTxStage(
+          context.requestId,
+          startedAt,
+          'login_tx_audit_written',
+          () =>
+            writeAudit(
+              {
+                actorUserId: user.id,
+                action: 'auth.login',
+                resourceType: 'refresh_session',
+                resourceId: refresh.sessionId,
+                outcome: 'success',
+                requestId: context.requestId,
+              },
+              transaction,
+            ),
+        )
 
-      const refresh = createRefreshToken()
-      const expiresAt = new Date(now.getTime() + REFRESH_ABSOLUTE_TTL_MS)
-      await transaction.user.update({
-        where: { id: user.id },
-        data: {
-          failedLoginCount: 0,
-          lockedUntil: null,
-          lastLoginAt: now,
-          updatedAt: now,
-        },
-      })
-      await transaction.refreshSession.create({
-        data: {
-          id: refresh.sessionId,
+        return {
+          authenticated: true as const,
           userId: user.id,
-          tokenHash: refresh.hash,
-          expiresAt,
-          idleExpiresAt: new Date(now.getTime() + REFRESH_IDLE_TTL_MS),
-          userAgentHash: hashUserAgent(context.userAgent),
-        },
-      })
-      await writeAudit(
-        {
-          actorUserId: user.id,
-          action: 'auth.login',
-          resourceType: 'refresh_session',
-          resourceId: refresh.sessionId,
-          outcome: 'success',
-          requestId: context.requestId,
-        },
-        transaction,
-      )
-
-      const profile = await transaction.user.findUniqueOrThrow({
-        where: { id: user.id },
-        include: currentUserInclude,
-      })
-      return {
-        authenticated: true as const,
-        accessToken: await issueAccessToken(user.id, user.passwordChangedAt),
-        refreshToken: refresh.raw,
-        user: toCurrentUser(profile),
-      }
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-  )
+          passwordChangedAt: user.passwordChangedAt,
+          refreshToken: refresh.raw,
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  } catch (error) {
+    logLoginTxStageFailure(
+      context.requestId,
+      startedAt,
+      'login_tx_completed',
+      error,
+    )
+    throw error
+  }
 
   if (!result.authenticated) {
+    logLoginTxStage(context.requestId, startedAt, 'login_tx_completed')
     throw invalidCredentials()
   }
 
-  return result
+  const profile = await withLoginTxStage(
+    context.requestId,
+    startedAt,
+    'login_tx_profile_loaded',
+    () =>
+      database.client.user.findUniqueOrThrow({
+        where: { id: result.userId },
+        include: currentUserInclude,
+      }),
+  )
+  const accessToken = await issueAccessToken(
+    result.userId,
+    result.passwordChangedAt,
+  )
+  logLoginTxStage(context.requestId, startedAt, 'login_tx_completed')
+
+  return {
+    authenticated: true as const,
+    accessToken,
+    refreshToken: result.refreshToken,
+    user: toCurrentUser(profile),
+  }
 }
 
 export async function refresh(
