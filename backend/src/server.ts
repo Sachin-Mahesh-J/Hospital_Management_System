@@ -1,8 +1,8 @@
 import 'dotenv/config'
-import { logger } from './config/logger.js'
+import { logStartupFailure } from './config/logger.js'
 import { startApplication } from './application.js'
 
 startApplication().catch((error: unknown) => {
-  logger.fatal({ error }, 'HMS API failed to start')
+  logStartupFailure(error)
   process.exitCode = 1
 })

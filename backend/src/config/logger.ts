@@ -94,3 +94,65 @@ export const logger = pino({
     censor: '[REDACTED]',
   },
 })
+
+const POSTGRES_CONNECTION_URL = /(?:postgres(?:ql)?):\/\/\S+/gi
+
+export type StartupErrorLog = {
+  name: string
+  message: string
+  stack?: string
+  code?: string
+  errorCode?: string
+  clientVersion?: string
+}
+
+function redactConnectionUrls(value: string): string {
+  return value.replace(POSTGRES_CONNECTION_URL, '[REDACTED]')
+}
+
+function readStringProperty(error: object, key: string): string | undefined {
+  const value = (error as Record<string, unknown>)[key]
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+export function serializeStartupError(error: unknown): StartupErrorLog {
+  if (error instanceof Error) {
+    const serialized: StartupErrorLog = {
+      name: error.name || 'Error',
+      message: redactConnectionUrls(error.message),
+    }
+
+    if (error.stack) {
+      serialized.stack = redactConnectionUrls(error.stack)
+    }
+
+    const code = readStringProperty(error, 'code')
+    const errorCode = readStringProperty(error, 'errorCode')
+    const clientVersion = readStringProperty(error, 'clientVersion')
+
+    if (code) {
+      serialized.code = code
+    }
+    if (errorCode) {
+      serialized.errorCode = errorCode
+    }
+    if (clientVersion) {
+      serialized.clientVersion = clientVersion
+    }
+
+    return serialized
+  }
+
+  return {
+    name: typeof error,
+    message: redactConnectionUrls(String(error)),
+  }
+}
+
+export function logStartupFailure(error: unknown): void {
+  const startupError = serializeStartupError(error)
+  logger.fatal(
+    { startupError },
+    `HMS API failed to start: ${startupError.name}: ${startupError.message}`,
+  )
+}
